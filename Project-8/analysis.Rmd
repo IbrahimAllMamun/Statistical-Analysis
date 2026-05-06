@@ -1,0 +1,471 @@
+---
+title: "Project 8"
+author: "Ibrahim All-Mamun"
+date: "2025-08-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+
+library(dplyr)
+library(survival)
+library(survminer)
+
+library(labelled)
+```
+
+
+
+```{r}
+data <- read_csv("data.csv", show_col_types = FALSE)
+names(data)
+```
+
+
+```{r}
+read_csv("data.csv", show_col_types = FALSE) %>% 
+  mutate(
+    age_grp = case_when(
+      Age <= 40 ~ 1, 
+      Age > 40 & Age <= 50 ~ 2, 
+      Age > 50 & Age <= 60 ~ 3, 
+      Age > 60  ~ 4
+      # Age > 60 & Age <= 70 ~ 4, 
+      # Age > 70 ~ 5
+      ) %>% 
+      factor(labels = c("<=40", "41-50", "51-60", "60+")),
+    bmi_grp = case_when(
+      BMI < 25 ~ 1, 
+      BMI >= 25 & BMI < 30 ~ 2, 
+      BMI >= 30  ~ 3
+      ) %>% 
+      factor(labels = c("Normal (18.5-24.9)", "Overweight (25.0-29.9)", "Obese (>30.0)")),
+    mhar_grp = case_when(
+      MHAR >= 4.08 ~ 1, 
+      MHAR < 4.08 ~ 0, 
+      ) %>% 
+      factor(labels = c("MHAR < 4.08", "MHAR >= 4.08")),
+    
+    Sex = factor(Sex, labels = c("Female", "Male")),
+    DM = factor(DM, labels = c("Yes")),
+    HTN = factor(HTN, labels = c("No", "Yes")),
+    Dyslipidemia = factor(Dyslipidemia, labels = c("No", "Yes")),
+    Smoking = factor(Smoking, labels = c("No", "Yes")),
+    AKI_24 = factor(AKI_24, labels = c("No", "Yes")),
+    AKI_48 = factor(AKI_48, labels = c("No", "Yes")),
+    AKI = factor(AKI, labels = c("No", "Yes")),
+    Postoperative_AKI = factor(Postoperative_AKI, labels = c("No", "Yes")),
+    RRT = factor(RRT, labels = c("No")),
+    Low_cardiac_output = factor(Low_cardiac_output, labels = c("No", "Yes")),
+    S_Creatinine_baseline = as.numeric(S_Creatinine_baseline)
+    
+  ) %>% 
+  set_variable_labels(
+    age_grp = "Age",
+    bmi_grp = "BMI",
+    mhar_grp = "MHAR",
+    
+    Serial = "Serial",
+    Age = "Age in years",
+    Sex = "Sex",
+    Height = "Height in cm",
+    Weight = "Weight in kg",
+    BMI = "BMI",
+    DM = "DM",
+    HTN = "HTN",
+    Dyslipidemia = "Dyslipidemia",
+    S_Creatinine_baseline = "S.Creatinine baseline",
+    Monocyte = "Monocyte %",
+    HDL = "HDL( high density lipoprotein)",
+    Albumin = "Albumin in g/dl",
+    M_HDL = "M/HDL",
+    MHAR = "MHAR [Monocyte/(HDL* Albumin)]",
+    Duration = "Duration of surgery (in hours)",
+    urine_output = "Per-operative urine output (ml/kg/hr)",
+    Serum_Creatinine_24 = "Serum Creatinine at first 24hr",
+    Serum_Creatinine_48 = "Serum Creatinine at first_48hr",
+    Serum_Creatinine = "Serum Creatinine on 7th post operative day",
+    AKI_24 = "AKI (Acute kidney injury)  on 1st 24hr",
+    AKI_48 = "AKI (Acute kidney injury)  on 48hr",
+    AKI = "AKI (Acute kidney injury) on 7th post operative days",
+    Postoperative_AKI = "Postoperative _AKI",
+    RRT = "RRT(Renal replacement therapy)",
+    Mechanical_ventilation = "Mechanical ventilation(in hrs)",
+    ICU_stay = "ICU stay(in days)",
+    Postoperative_stay = "Postoperative Hospital stay in days",
+    Low_cardiac_output = "Low cardiac output syndome",
+    WBC = "WBC",
+
+  ) -> data
+```
+
+
+# Demographic Table
+```{r}
+data %>%
+  select(age_grp, Age, Sex, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> demo_tab
+demo_tab
+```
+
+
+
+# BMI Table
+```{r}
+data %>%
+  select(bmi_grp, BMI, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> bmi_tab
+bmi_tab
+```
+# Comorbidity Table
+```{r}
+data %>%
+  select(HTN, Dyslipidemia, Smoking, S_Creatinine_baseline, Duration, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      S_Creatinine_baseline ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> com_tab
+com_tab
+```
+```{r}
+data %>%
+  select(S_Creatinine_baseline, Group) %>%
+  group_by(Group) %>% 
+  summarise(
+    m = mean(S_Creatinine_baseline),
+    s = sd(S_Creatinine_baseline),
+  )
+data %>%
+  select(S_Creatinine_baseline) %>%
+  summarise(
+    m = mean(S_Creatinine_baseline),
+    s = sd(S_Creatinine_baseline),
+  )
+
+t.test(S_Creatinine_baseline~Group, data=data)
+```
+
+
+# Postoperative clinical outcome 
+```{r}
+data %>%
+  select(Postoperative_stay,ICU_stay,Mechanical_ventilation, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> post_tab
+post_tab
+```
+
+
+# perioperative serum creatinine between two groups 
+```{r}
+data %>%
+  select(Serum_Creatinine_24, Serum_Creatinine_48, Serum_Creatinine, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> peri_tab
+peri_tab
+```
+
+# AKI between two groups 
+```{r}
+data %>%
+  select(AKI_24, AKI_48, AKI, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> aki_tab
+aki_tab
+```
+# Urine between two groups 
+```{r}
+data %>%
+  select(urine_output, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> ur_tab
+ur_tab
+```
+# Multiple Variables between two groups 
+```{r}
+data %>%
+  select(Low_cardiac_output, MHAR, Albumin, HDL, WBC, Group) %>%
+  tbl_summary(
+    by = Group,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "t.test",
+      all_categorical() ~ "chisq.test"
+    )
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> wbc_tab
+wbc_tab
+```
+
+
+
+```{r}
+# fml <- AKI~mhar_grp+Age+Sex+Serum_Creatinine+HTN+Duration+urine_output
+fml <- AKI~mhar_grp+Age+Duration+urine_output
+
+mod <- glm(fml, data=data, family = binomial())
+broom::tidy(mod, conf.int = TRUE, exponentiate = TRUE)
+
+# table(data$Group, data$mhar_grp)
+```
+
+```{r}
+
+mod %>% 
+  tbl_regression(
+    exponentiate = T
+  ) %>% 
+  bold_labels() %>% 
+  modify_table_styling(
+    columns = c(estimate),
+    rows = reference_row == T,
+    missing_symbol = "1"
+  ) %>% 
+  bold_labels() %>% 
+  as_flex_table() -> model
+model
+```
+
+
+
+```{r}
+library(pROC)
+
+# Predicted probabilities
+pred <- predict(mod, type = "response")
+
+# ROC object
+roc_obj <- roc(data$AKI, pred)
+
+# Extract TPR and FPR
+tpr <- roc_obj$sensitivities
+fpr <- 1 - roc_obj$specificities
+
+# Plot TPR vs FPR
+plot(fpr, tpr, type = "l", col = "blue", lwd = 2,
+     xlab = "1 - Specificity",
+     ylab = "Sensitivity",
+     main = "ROC Curve")
+abline(a = 0, b = 1, lty = 2, col = "red")
+
+
+# Best threshold (Youden’s Index)
+best <- coords(
+  roc_obj, "best", 
+  ret = c("threshold", "sensitivity", "specificity"),
+  best.method = "youden"
+)
+
+# AUC with 95% CI
+auc_ci <- ci.auc(roc_obj)  # returns 3 numbers: lower, AUC, upper
+
+roc_obj$call()
+
+# Combine into one tibble
+summary_tbl <- tibble(
+    AUC = round(auc(roc_obj), 3),
+    `AUC 95% CI` = paste0("(", round(auc_ci[1], 3), " – ", round(auc_ci[3], 3), ")"),
+    Threshold = round(best["threshold"], 3),
+    Sensitivity = round(best["sensitivity"], 3),
+    Specificity = round(best["specificity"], 3),
+)
+
+# Pretty table
+summary_tbl %>%
+  gt() 
+```
+
+
+
+
+
+```{r}
+se <- abs((auc_ci[1] - auc_ci[3])/(2*1.96))
+auc_val <- auc(roc_obj)
+
+
+z <- auc_val/se
+
+2*pnorm(z, lower.tail = F)
+```
+
+
+```{r}
+read_docx() %>% 
+body_add_par(value = "Comparison of age and sex between two groups") %>%
+body_add_flextable(value = demo_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of BMI between two groups") %>%
+body_add_flextable(value = bmi_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of comorbidities between two groups") %>%
+body_add_flextable(value = com_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of postoperative clinical outcome") %>%
+body_add_flextable(value = post_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of perioperative serum creatinine between two groups") %>%
+body_add_flextable(value = peri_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of early postoperative AKI between two groups") %>%
+body_add_flextable(value = aki_tab) %>%
+body_add_par(value = "") %>%
+body_add_par(value = "Comparison of urine output between two groups") %>%
+body_add_flextable(value = ur_tab) %>% 
+body_add_par(value = "") %>% 
+body_add_par(value = "Comparison of WBC, MHAR, HDL, Albumin, Low Cardiac between two groups") %>%
+body_add_flextable(value = wbc_tab) %>% 
+body_add_par(value = "") %>% 
+body_add_par(value = "Model") %>%
+body_add_flextable(value = model) %>%
+print(target = "doc/all_table.docx")
+```
+
+Low_cardiac_output, MHAR, Albumin, HDL, WBC
+
+```{r}
+names(data)
+```
+
+
+
+
+
+
+

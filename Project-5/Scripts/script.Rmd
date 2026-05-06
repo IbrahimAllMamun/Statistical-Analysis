@@ -1,0 +1,592 @@
+---
+title: "Untitled"
+author: "Ibrahim All-Mamun"
+date: "2025-05-05"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(haven)
+library(gtsummary)
+library(flextable)
+library(officer)
+```
+
+```{r}
+data <- read_dta("../Data/diet_variables_updated2.dta")
+# Convert all labelled variables to factors
+data <- data %>%
+  mutate(across(where(haven::is.labelled), haven::as_factor)) %>% 
+  mutate(
+    Diet_Diversity=case_when(
+      Diet_Diversity=="Inadequate Dietary Diversity" ~ "Inadequate",
+      Diet_Diversity=="Adequate Dietary Diversity" ~ "Adequate"
+    ) %>% factor(levels = c("Adequate","Inadequate")))
+
+vars <- c(
+  "age",
+  "gender",
+  "marital",
+  "university_location",
+  "year",
+  "living_situation",
+  "income_source_house",
+  "income_house",
+  "income_category",
+  "working_hours_day",
+  "pay_tuition",
+  "mental_health_services",
+  "socioeconomic_status",
+  "family_support_financial",
+  "antidepressant",
+  "sleeping_hours",
+  "physical_activity",
+  "smoke",
+  "Depression",
+  "Anxiety",
+  "Stress",
+  "Depression_Level",
+  "Anxiety_Level",
+  "Stress_Level",
+  "FGDS",
+  "Diet_Diversity",
+  "GDR_Score",
+  "employment_recode"
+)
+```
+
+
+
+```{r}
+# Create the summary table
+univariate <- data %>%
+  select(vars) %>% 
+  tbl_summary(
+    by = NULL,
+    statistic = list(all_continuous() ~ "{mean} ({sd})", all_categorical() ~ "{n} ({p}%)"),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels()
+
+# Convert to flextable for Word
+univariate_flex <- as_flex_table(univariate)
+
+# Create Word document and add table
+doc <- read_docx() %>%
+  body_add_flextable(univariate_flex)
+
+# Save to file
+print(doc, target = "univariate_summary2.docx")
+
+
+```
+
+```{r}
+univariate
+```
+
+
+```{r}
+data %>%
+  select(vars) %>% 
+  tbl_summary(
+    by = Diet_Diversity,
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "no"
+  ) %>%
+  add_p(test = all_continuous() ~ "aov") %>%
+  bold_labels() -> bivariate_diet
+
+
+# Convert to flextable for Word
+bivariate_diet_flex <- as_flex_table(bivariate_diet)
+
+# Create Word document and add table
+doc <- read_docx() %>%
+  body_add_flextable(bivariate_diet_flex)
+
+# Save to file
+print(doc, target = "bivariate_diet_cont_summary.docx")
+
+```
+
+
+
+```{r}
+data %>%
+  select(vars) %>% 
+  tbl_summary(
+    by = Depression_Level,
+    # by = Anxiety_Level,
+    # by = Stress_Level,
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "no"
+  ) %>%
+  add_p(test = all_continuous() ~ "aov") %>%
+  bold_labels() -> bivariate_Depression
+
+
+# Convert to flextable for Word
+bivariate_Depression_flex <- as_flex_table(bivariate_Depression)
+
+# Create Word document and add table
+doc <- read_docx() %>%
+  body_add_flextable(bivariate_Depression_flex)
+
+# Save to file
+print(doc, target = "bivariate_Depression_cont_summary.docx")
+
+```
+
+
+```{r}
+data %>%
+  select(vars) %>% 
+  tbl_summary(
+    # by = Depression_Level,
+    by = Anxiety_Level,
+    # by = Stress_Level,
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "no"
+  ) %>%
+  add_p(test = all_continuous() ~ "aov") %>%
+  bold_labels() -> bivariate_Anxiety
+
+
+# Convert to flextable for Word
+bivariate_Anxiety_flex <- as_flex_table(bivariate_Anxiety)
+
+# Create Word document and add table
+doc <- read_docx() %>%
+  body_add_flextable(bivariate_Anxiety_flex)
+
+# Save to file
+print(doc, target = "bivariate_Anxiety_cont_summary.docx")
+
+```
+
+
+```{r}
+data %>%
+  select(vars) %>% 
+  tbl_summary(
+    # by = Depression_Level,
+    # by = Anxiety_Level,
+    by = Stress_Level,
+    statistic = all_continuous() ~ "{mean} ({sd})",
+    missing = "no"
+  ) %>%
+  add_p(test = all_continuous() ~ "aov") %>%
+  bold_labels() -> bivariate_Stress
+
+
+# Convert to flextable for Word
+bivariate_Stress_flex <- as_flex_table(bivariate_Stress)
+
+# Create Word document and add table
+doc <- read_docx() %>%
+  body_add_flextable(bivariate_Stress_flex)
+
+# Save to file
+print(doc, target = "bivariate_Stress_cont_summary.docx")
+
+```
+
+
+
+
+```{r}
+
+dep_formula <- Depression ~ age + gender + marital + university_location + year + 
+               living_situation + income_source_house + income_house + income_category + 
+               working_hours_day + pay_tuition + mental_health_services + socioeconomic_status + 
+               family_support_financial + antidepressant + sleeping_hours + physical_activity + 
+               smoke + FGDS + Diet_Diversity + GDR_Score + employment_recode
+
+anx_formula <- Anxiety ~ age + gender + marital + university_location + year + 
+               living_situation + income_source_house + income_house + income_category + 
+               working_hours_day + pay_tuition + mental_health_services + socioeconomic_status + 
+               family_support_financial + antidepressant + sleeping_hours + physical_activity + 
+               smoke + FGDS + Diet_Diversity + GDR_Score + employment_recode
+
+str_formula <- Stress ~ age + gender + marital + university_location + year + 
+               living_situation + income_source_house + income_house + income_category + 
+               working_hours_day + pay_tuition + mental_health_services + socioeconomic_status + 
+               family_support_financial + antidepressant + sleeping_hours + physical_activity + 
+               smoke + FGDS + Diet_Diversity + GDR_Score + employment_recode
+```
+
+
+```{r}
+dep_mod <- lm(dep_formula, data = data)
+anx_mod <- lm(anx_formula, data = data)
+str_mod <- lm(str_formula, data = data)
+```
+
+
+
+```{r}
+summary(dep_mod)
+summary(anx_mod)
+summary(str_mod)
+```
+
+
+
+
+
+
+
+```{r}
+library(gtsummary)
+
+dep_tbl <- tbl_regression(dep_mod, label = list(), intercept = TRUE) %>%
+  bold_labels()
+
+anx_tbl <- tbl_regression(anx_mod, label = list(), intercept = TRUE) %>%
+  bold_labels()
+
+str_tbl <- tbl_regression(str_mod, label = list(), intercept = TRUE) %>%
+  bold_labels()
+```
+
+
+```{r}
+multi_model_tbl <- tbl_merge(
+  list(dep_tbl, anx_tbl, str_tbl),
+  tab_spanner = c("Depression", "Anxiety", "Stress")
+)
+```
+
+
+```{r}
+library(officer)
+library(flextable)
+
+doc <- read_docx() %>%
+  body_add_flextable(as_flex_table(multi_model_tbl))
+
+print(doc, target = "mental_health_models.docx")
+```
+
+
+
+
+```{r}
+library(tidyverse)
+
+# Example data
+data <- tribble(
+  ~Characteristic, ~Outcome, ~Beta, ~CI_low, ~CI_high, ~p_value,
+  "Age", "Depression", 0.28, -0.97, 1.5, 0.7,
+  "Age", "Anxiety", -0.03, -1.0, 0.99, 0.9,
+  "Age", "Stress", -0.05, -1.2, 1.1, 0.9,
+  "Married (ref: Unmarried)", "Depression", 7.1, -0.57, 15, 0.070,
+  "Married (ref: Unmarried)", "Anxiety", 8.7, 2.4, 15, 0.007,
+  "Married (ref: Unmarried)", "Stress", 4.9, -2.1, 12, 0.2,
+  "Lower SES (ref: Upper)", "Depression", 15, 5.9, 23, 0.001,
+  "Lower SES (ref: Upper)", "Anxiety", 8.3, 1.1, 16, 0.023,
+  "Lower SES (ref: Upper)", "Stress", 11, 2.6, 19, 0.009
+  # Add more rows here...
+)
+
+```
+
+```{r}
+ggplot(data, aes(x = Beta, y = Characteristic, color = Outcome)) +
+  geom_point(position = position_dodge(width = 0.7), size = 3) +
+  geom_errorbar(aes(xmin = CI_low, xmax = CI_high), 
+                position = position_dodge(width = 0.7), 
+                width = 0.2) +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  theme_minimal() +
+  labs(title = "Regression Coefficients with 95% CI",
+       x = "Beta Estimate",
+       y = "",
+       color = "Outcome") +
+  theme(axis.text.y = element_text(size = 10))
+
+```
+```{r}
+df <- data
+```
+
+
+```{r}
+# Assuming df is your dataset
+df %>%
+  pivot_longer(cols = c(Depression_Level, Anxiety_Level, Stress_Level), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = Score, fill = Outcome)) +
+  geom_bar(position = "dodge") +
+  theme_bw() +
+  labs(
+    title = "Distribution of Depression, Anxiety, and Stress Levels",
+    x = "Severity Level",
+    y = "Count",
+    fill = " "
+  ) +
+  scale_fill_manual(
+    values = c("Depression_Level" = "#1f77b4", 
+               "Anxiety_Level" = "#ff7f0e", 
+               "Stress_Level" = "#2ca02c"),
+    labels = c("Depression_Level" = "Depression",
+               "Anxiety_Level" = "Anxiety",
+               "Stress_Level" = "Stress")
+  )
+
+```
+
+
+```{r}
+df %>%
+  pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = gender)) +
+  geom_boxplot(aes(y = Score, fill = gender)) +
+  facet_grid(. ~ Outcome, scales = "free_y") +  # column layout
+  theme_bw() +
+  labs(
+    title = "Mental Health Scores by Gender", 
+    x = " ", 
+    y = "Score", 
+    fill = "Gender"
+  ) +
+  scale_fill_manual(
+    values = c("Male" = "#1f77b4", "Female" = "#e377c2"),
+    labels = c("Male" = "Male", "Female" = "Female")
+  ) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    strip.placement = "outside"
+  )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+# Plot
+df %>%
+  pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = physical_activity)) +
+  geom_boxplot(aes(y = Score, fill = physical_activity)) +
+  facet_grid(. ~ Outcome, scales = "free_y") +  # column layout
+  theme_bw() +
+  labs(
+    title = "Mental Health Scores by Physical Activity", 
+    x = " ", 
+    y = "Score", 
+    fill = "Physical Activity"
+  ) +
+  scale_fill_manual(
+    values = c("Sedentary" = "#1f77b4", 
+               "Moderately active" = "#ff7f0e", 
+               "Very active" = "#2ca02c"),
+    labels = c("Sedentary" = "Sedentary",
+               "Moderately active" = "Moderate",
+               "Very active" = "Very Active")
+  ) +
+  theme(
+    axis.text.x = element_blank(),     # remove x-axis tick labels
+    axis.ticks.x = element_blank()     # remove x-axis tick marks
+  )
+
+
+```
+
+
+
+
+```{r}
+df %>%
+  pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = marital, y = Score, fill = marital)) +
+  geom_boxplot() +
+  facet_grid(.~Outcome, scales = "free_y") +
+  theme_bw() +
+  labs(title = "Mental Health Scores by Marital Status", x = " ", y = "Score", fill = "Marital Status") +
+  theme(
+    axis.text.x = element_blank(),     # remove x-axis tick labels
+    axis.ticks.x = element_blank()     # remove x-axis tick marks
+  )
+```
+
+
+
+
+```{r}
+df %>%
+  pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+  filter(income_category!="None") %>% 
+ggplot(aes(x = income_category, y = Score, fill = income_category)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +  # column layout
+  theme_bw() +
+  labs(
+    title = "Interaction: Gender × Income Category on Depression",
+    x = "Income Category",
+    y = "Score",
+    fill = "Gender"
+  ) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+# +
+#   scale_fill_manual(
+#     values = c("Male" = "#1f77b4", "Female" = "#e377c2")
+#   )
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+df %>%
+  pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+  filter(income_category != "None") %>% 
+  mutate(
+    income_category=case_when(
+      income_category=="Less than 5000" ~ "<5000",
+      income_category=="5000 to 10000" ~ "5000–10000",
+      .default = ">10000"
+    ) %>% 
+      factor(levels = c( "<5000", "5000–10000", ">10000"))
+  ) %>% 
+  ggplot(aes(x = income_category, y = Score, fill = gender)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(
+    title = "Interaction: Gender × Income Category on Mental Health Scores",
+    x = "Income Category",
+    y = "Score",
+    fill = "Gender"
+  ) +
+  theme(axis.text.x = element_text(angle = 0, hjust = 1)) +
+  scale_fill_manual(
+    values = c("Male" = "#1f77b4", "Female" = "#e377c2")
+  ) 
+
+
+
+```
+
+
+
+
+```{r}
+df %>% 
+pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = employment_recode, y = Score, fill = employment_recode)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(title = "Mental Health Scores by Employment Status", x = " ", y = "Score", fill = "Employment Status") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```
+```{r}
+df %>% 
+pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = socioeconomic_status, y = Score, fill = socioeconomic_status)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(title = "Mental Health Scores by Socioeconomic Status", x = " ", y = "Score", fill = "Socioeconomic Status") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```
+```{r}
+df %>% 
+pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+  filter(working_hours_day!="None") %>% 
+ggplot(aes(x = working_hours_day, y = Score, fill = working_hours_day)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(title = "Mental Health Scores by Working Hours", x = " ", y = "Score", fill = "Working Hours") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```
+```{r}
+df %>% 
+pivot_longer(cols = c(Depression, Anxiety, Stress), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+  filter(!is.na(Diet_Diversity)) %>% 
+ggplot(aes(x = Diet_Diversity, y = Score, fill = Diet_Diversity)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(title = "Mental Health Scores by Diet Diversity", x = " ", y = "Score", fill = "Diet Diversity") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```
+```{r}
+df %>% 
+pivot_longer(cols = c(Depression_Level, Anxiety_Level, Stress_Level), 
+               names_to = "Outcome", 
+               values_to = "Score") %>% 
+ggplot(aes(x = Score, y = GDR_Score, fill = Score)) +
+  geom_boxplot(position = position_dodge()) +
+  facet_grid(. ~ Outcome, scales = "free") +
+  theme_bw() +
+  labs(title = "GDR Scores by Mental Health", x = " ", y = "GDR Score", fill = "Mental Health") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```
+```{r}
+df %>% 
+  filter(!is.na(Diet_Diversity)) %>% 
+ggplot(aes(x = Diet_Diversity, y = NCD_Risk, fill = Diet_Diversity)) +
+  geom_boxplot(position = position_dodge()) +
+  theme_bw() +
+  labs(title = "NCD Risk by Diet Diversity", x = " ", y = "NCD Risk", fill = "Diet Diversity") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) 
+```

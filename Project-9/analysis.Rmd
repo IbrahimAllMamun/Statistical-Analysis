@@ -1,0 +1,923 @@
+---
+title: "Project 9"
+author: "Ibrahim All-Mamun"
+date: "2025-08-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+library(summarytools)
+library(openxlsx)
+
+library(forcats)
+
+library(dplyr)
+library(survival)
+library(survminer)
+
+library(labelled)
+
+library(mice)
+library(jomo)
+
+select <- dplyr::select
+```
+
+
+# Data
+```{r}
+data_main <- read_dta("Data/Knownledge_data2.dta")
+names(data_main)
+```
+
+```{r}
+read_dta("Data/Knownledge_data2.dta") %>% 
+  mutate(across(where(haven::is.labelled), haven::as_factor)) %>% 
+  mutate(
+    age = case_when(
+      age <= 40 ~ 1, 
+      age > 40 & age <= 50 ~ 2, 
+      age > 50 & age <= 60 ~ 3, 
+      age > 60  ~ 4
+      # Age > 60 & Age <= 70 ~ 4, 
+      # Age > 70 ~ 5
+    ) %>% 
+      factor(labels = c("<=40", "41-50", "51-60", "60+")),
+  ) %>% 
+  set_variable_labels(
+    age = "Age"
+  ) -> data
+```
+
+
+
+
+
+# Demographic Table
+```{r}
+# age
+# Sex
+# Family
+# nameofcancer
+# agecancer
+# dept
+# post
+# dgraduation
+
+
+data <- data %>%
+  mutate(
+    post = fct_recode(post,"MO" = "9")
+  )
+
+
+
+data$nameofcancer[data$nameofcancer %in% c("coion","colon")] <- "Colon"
+data$nameofcancer[data$nameofcancer %in% c("carvix","ceavix","cervix")] <- "Cervix"
+data$nameofcancer[data$nameofcancer %in% c("head&nek")] <- "Head and Neck"
+data$nameofcancer[data$nameofcancer %in% c("leukamia","leukemia")] <- "Leukemia"
+data$nameofcancer[data$nameofcancer %in% c("lang","lung","Lung","Nung")] <- "Lung"
+data$nameofcancer[data$nameofcancer %in% c("ovareon","ovario","ovarion")] <- "Ovarian"
+data$nameofcancer[data$nameofcancer %in% c("")] <- NA
+
+non_clinical <- c("Anatomy", "Physiology","Biochemistry","Community medicine","Forensic medicine","Pharmacology","Pathology","Microbiology")
+
+data <- data %>% 
+  mutate(
+    dgraduation = case_when(
+      dgraduation <= 5~1,
+      dgraduation > 5 & dgraduation <= 10 ~ 2, 
+      dgraduation > 10  ~ 3
+    ) %>% 
+      factor(, labels = c("<6", "6-10", ">10")),
+    agecancer = case_when(
+      agecancer <  45~1,
+      agecancer >= 45 & agecancer <= 55 ~ 2, 
+      agecancer >  55  ~ 3
+    ) %>% 
+      factor(, labels = c("<45", "45-55", ">55")),
+    durationscan = case_when(
+      durationscan <  5~1,
+      durationscan >= 5 & durationscan <= 10 ~ 2, 
+      durationscan >  10  ~ 3
+    ) %>% 
+      factor(, labels = c("<5", "5-10", ">10")),
+    dept = case_when(
+      is.na(dept)~NA_real_,
+      dept %in% non_clinical~0,
+      !dept %in% non_clinical~1,
+    ) %>% factor(labels=c("Non Clinical", "Clinical"))
+  )
+
+
+
+
+
+data %>%
+  select(age, Sex:dgraduation) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> demo_tab
+demo_tab
+```
+
+
+
+
+# Knowledge Table
+```{r}
+# dx_self_cancer
+# nameselfcan
+# durationscan
+# know_ca_scrn
+# namecancers
+# att_ca_scrn
+
+
+data$nameselfcan[data$nameselfcan %in% c("Breast","breast")] <- "Breast"
+data$nameselfcan[data$nameselfcan %in% c("cervix","carvix")] <- "Cervix"
+data$nameselfcan[data$nameselfcan %in% c("long","lung","Lung")] <- "Lung"
+data$nameselfcan[data$nameselfcan %in% c("laryngea","larynx")] <- "Larynx"
+data$nameselfcan[data$nameselfcan %in% c("ovareon","Ovariaya","ovarion","overion")] <- "Ovarian"
+data$nameselfcan[data$nameselfcan %in% c("")] <- NA
+
+
+
+data$namecancers[data$namecancers %in% c("bone", "none")] <- "Bone"
+data$namecancers[data$namecancers %in% c("brest", "breast")] <- "Breast"
+data$namecancers[data$namecancers %in% c("cervical","carvical","carvix","cervix")] <- "Cervix"
+data$namecancers[data$namecancers %in% c("prostet","prostate")] <- "Prostate"
+data$namecancers[data$namecancers %in% c("")] <- NA
+
+
+
+data %>%
+  select(dx_self_cancer:att_ca_scrn) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> know_tab
+know_tab
+```
+
+
+
+
+
+
+
+
+
+# Breast Cancer Table
+```{r}
+# know_ca_br_scrn
+# agebrcans
+# interval_br_scrn
+# att_br_ca_scrn
+# prac_brca_scrn
+# prac_bse
+# bse_interval
+# prac_mamography
+# interval_mamo
+# brcan_scrn_family
+# famlibrcansc
+# brca_scrn_pt
+# interval_brca_pt
+
+
+
+data %>%
+  select(know_ca_br_scrn:interval_brca_pt) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> breast_tab
+breast_tab
+```
+
+
+
+
+
+## Knowledge
+```{r}
+# know_ca_br_scrn
+# agebrcans
+# interval_br_scrn
+
+# prac_brca_scrn
+# att_br_ca_scrn
+
+
+data <- data %>% 
+  mutate(
+    know_breast = case_when(
+      as.numeric(know_ca_br_scrn)==1~1,
+      as.numeric(know_ca_br_scrn)==2~0
+    ) +
+      case_when(
+        agebrcans>=25~1,
+        agebrcans<25~0,
+        is.na(agebrcans)~0
+      ) + 
+      case_when(
+        interval_br_scrn %in% c(1)~1,
+        !interval_br_scrn %in% c(1)~0,
+      ) +
+      case_when(
+        as.numeric(prac_brca_scrn)==1~1,
+        as.numeric(prac_brca_scrn)==2~0
+      ) +
+      case_when(
+        as.numeric(att_br_ca_scrn)==1~1,
+        as.numeric(att_br_ca_scrn)==2~0
+    ) 
+  ) 
+
+```
+
+
+## Practice
+```{r}
+# prac_bse
+# bse_interval
+# prac_mamography
+# interval_mamo
+# brcan_scrn_family
+# famlibrcansc
+# brca_scrn_pt
+# interval_brca_pt
+
+
+
+data <- data %>% 
+  mutate(
+    prac_breast = case_when(
+      as.numeric(prac_bse)==1~1,
+      as.numeric(prac_bse)==2~0
+    ) +
+      case_when(
+        bse_interval %in% c(1)~1,
+        !bse_interval %in% c(1)~0,
+      ) +
+      case_when(
+        as.numeric(prac_mamography)==1~1,
+        as.numeric(prac_mamography)==2~0
+      ) +
+      case_when(
+        interval_mamo %in% c(1,2)~1,
+        !interval_mamo %in% c(1,2)~0
+      ) +
+      case_when(
+        as.numeric(brcan_scrn_family)==1~1,
+        as.numeric(brcan_scrn_family)==2~0
+      ) +
+      case_when(
+        famlibrcansc %in% c(1)~1,
+        !famlibrcansc %in% c(1)~0,
+      ) +
+      case_when(
+        as.numeric(brca_scrn_pt)==1~1,
+        as.numeric(brca_scrn_pt)==2~0
+      ) +
+      case_when(
+        interval_brca_pt %in% c(1)~1,
+        !interval_brca_pt %in% c(1)~0,
+      ) 
+  ) 
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+# Colon  Cancer Table
+```{r}
+# know_colon_ca
+# age_colon_ca
+# intecolocas
+# att_colon_ca
+# do_colonoscopy
+# intercolonos
+# colon_scrn_family
+# intercolonfamil
+# colon_scrn_patient
+# intercolonspt
+
+
+
+data %>%
+  select(know_colon_ca:intercolonspt) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> colon_tab
+colon_tab
+```
+
+
+## Knowledge
+```{r}
+# know_colon_ca
+# age_colon_ca
+# intecolocas
+# att_colon_ca
+# do_colonoscopy
+# intercolonos
+
+
+
+data <- data %>% 
+  mutate(
+    know_colon = case_when(
+      as.numeric(know_colon_ca)==1~1,
+      as.numeric(know_colon_ca)==2~0
+    ) +
+      case_when(
+        age_colon_ca>=45~1,
+        age_colon_ca<45~0,
+        is.na(age_colon_ca)~0
+      ) + 
+      case_when(
+        intecolocas %in% c(3)~1,
+        !intecolocas %in% c(3)~0,
+      ) +
+      case_when(
+        as.numeric(do_colonoscopy)==1~1,
+        as.numeric(do_colonoscopy)==2~0
+      ) + 
+      case_when(
+        intercolonos %in% c(3)~1,
+        !intercolonos %in% c(3)~0
+      ) +
+      case_when(
+        as.numeric(att_colon_ca)==1~1,
+        as.numeric(att_colon_ca)==2~0
+    ) 
+  )
+```
+
+## Attitude
+```{r}
+# att_colon_ca
+# data <- data %>% 
+#   mutate(
+#     att_colon = case_when(
+#       as.numeric(att_colon_ca)==1~1,
+#       as.numeric(att_colon_ca)==2~0
+#     ) 
+#   )
+```
+
+## Practice
+```{r}
+# colon_scrn_family
+# intercolonfamil
+# colon_scrn_patient
+# intercolonspt
+
+
+data <- data %>% 
+  mutate(
+    prac_colon = case_when(
+      as.numeric(colon_scrn_family)==1~1,
+      as.numeric(colon_scrn_family)==2~0
+    ) +
+      case_when(
+        intercolonfamil %in% c(3)~1,
+        !intercolonfamil %in% c(3)~0,
+      ) +
+      case_when(
+        as.numeric(colon_scrn_patient)==1~1,
+        as.numeric(colon_scrn_patient)==2~0
+      ) +
+      case_when(
+        intercolonspt %in% c(3)~1,
+        !intercolonspt %in% c(3)~0
+      ) 
+  )
+```
+
+
+
+
+
+
+# Prostate  Cancer Table
+```{r}
+# know_prost_scrn
+# ageproscs
+# interproscs
+# att_prost_scrn
+# do_dre_psa
+# interpsadre
+# pros_scrn_family
+# iprosf
+# pros_scrn_patient
+# interprospt
+
+
+
+data %>%
+  select(know_prost_scrn:interprospt) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> prostate_tab
+prostate_tab
+```
+
+
+
+## Knowledge
+```{r}
+# know_prost_scrn
+# ageproscs
+# interproscs
+# att_prost_scrn
+
+data <- data %>% 
+  mutate(
+    know_prostate = case_when(
+      as.numeric(know_prost_scrn)==1~1,
+      as.numeric(know_prost_scrn)==2~0
+    ) +
+      case_when(
+        ageproscs>=50~1,
+        ageproscs<50~0,
+        is.na(ageproscs)~0,
+      ) + 
+      case_when(
+        interproscs %in% c(1)~1,
+        !interproscs %in% c(1)~0,
+      ) +
+      case_when(
+        as.numeric(att_prost_scrn)==1~1,
+        as.numeric(att_prost_scrn)==2~0
+    ) 
+  )
+
+```
+
+## Attitude
+```{r}
+# att_prost_scrn
+
+# data <- data %>% 
+#   mutate(
+#     att_prostate = case_when(
+#       as.numeric(att_prost_scrn)==1~1,
+#       as.numeric(att_prost_scrn)==2~0
+#     ) 
+#   )
+```
+
+## Practice
+```{r}
+# do_dre_psa
+# interpsadre
+# pros_scrn_family
+# iprosf
+# pros_scrn_patient
+# interprospt
+
+
+data <- data %>% 
+  mutate(
+    prac_prostate = case_when(
+      as.numeric(do_dre_psa)==1~1,
+      as.numeric(do_dre_psa)==2~0
+    ) +
+      case_when(
+        interpsadre %in% c(1,2)~1,
+        !interpsadre %in% c(1,2)~0,
+      ) +
+      case_when(
+        as.numeric(pros_scrn_family)==1~1,
+        as.numeric(pros_scrn_family)==2~0
+      ) +
+      case_when(
+        iprosf %in% c(1,2)~1,
+        !iprosf %in% c(1,2)~0
+      ) +
+      case_when(
+        as.numeric(pros_scrn_patient)==1~1,
+        as.numeric(pros_scrn_patient)==2~0
+      ) +
+      case_when(
+        interprospt %in% c(1,2)~1,
+        !interprospt %in% c(1,2)~0,
+      )
+  )
+```
+
+
+
+
+
+
+# Cervical  Cancer Table
+```{r}
+# know_cerv_scrn
+# age_cerv_start
+# intercer
+# att_cerv_scrn
+# prac_via
+# do_via
+# intervia
+# cerv_scrn_family
+# interfamcer
+# cerv_scrn_patient
+# intercerpt
+
+
+
+
+data %>%
+  select(know_cerv_scrn:intercerpt) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> cervical_tab
+cervical_tab
+```
+
+
+
+## Knowledge
+```{r}
+# know_cerv_scrn
+# age_cerv_start
+# intercer
+
+# prac_via
+# att_cerv_scrn
+
+
+data <- data %>% 
+  mutate(
+    know_cervical  = case_when(
+      as.numeric(know_cerv_scrn)==1~1,
+      as.numeric(know_cerv_scrn)==2~0
+    ) +
+      case_when(
+        age_cerv_start>=21~1,
+        age_cerv_start<21~0,
+        is.na(age_cerv_start)~0
+      ) + 
+      case_when(
+        intercer %in% c(3,5)~1,
+        !intercer %in% c(3,5)~0,
+      ) +
+      case_when(
+        as.numeric(prac_via)==1~1,
+        as.numeric(prac_via)==2~0
+      ) +
+      case_when(
+        as.numeric(att_cerv_scrn)==1~1,
+        as.numeric(att_cerv_scrn)==2~0
+      ) 
+  ) 
+```
+
+## Attitude
+```{r}
+# att_cerv_scrn
+
+# data <- data %>% 
+#   mutate(
+#     att_cervical  = case_when(
+#       as.numeric(att_cerv_scrn)==1~1,
+#       as.numeric(att_cerv_scrn)==2~0
+#     ) 
+#   ) 
+
+
+```
+
+## Practice
+```{r}
+# do_via
+# intervia
+# cerv_scrn_family
+# interfamcer
+# cerv_scrn_patient
+# intercerpt
+
+
+data <- data %>% 
+  mutate(
+    prac_cervical  = case_when(
+      as.numeric(do_via)==1~1,
+      as.numeric(do_via)==2~0
+    ) +
+      case_when(
+        intervia %in% c(1)~1,
+        !intervia %in% c(1)~0,
+      ) +
+      case_when(
+        as.numeric(cerv_scrn_family)==1~1,
+        as.numeric(cerv_scrn_family)==2~0
+      ) +
+      case_when(
+        interfamcer %in% c(1,2)~1,
+        !interfamcer %in% c(1,2)~0
+      ) +
+      case_when(
+        as.numeric(cerv_scrn_patient)==1~1,
+        as.numeric(cerv_scrn_patient)==2~0
+      ) +
+      case_when(
+        intercerpt %in% c(1)~1,
+        !intercerpt %in% c(1)~0,
+      ) 
+  ) 
+
+```
+
+
+# Save Data
+
+
+
+
+
+```{r}
+data_mod <- data %>% 
+  mutate(
+    know_breast = ifelse(know_breast>=3, 1,0) %>% factor(labels = c("Poor", "Good")),
+    prac_breast = ifelse(prac_breast>=4, 1,0) %>% factor(labels = c("Poor", "Good")),
+    know_colon = ifelse(know_colon>=3, 1,0) %>% factor(labels = c("Poor", "Good")),
+    prac_colon = ifelse(prac_colon>=2, 1,0) %>% factor(labels = c("Poor", "Good")),
+    know_prostate = ifelse(know_prostate>=2, 1,0) %>% factor(labels = c("Poor", "Good")),
+    prac_prostate = ifelse(prac_prostate>=3, 1,0) %>% factor(labels = c("Poor", "Good")),
+    know_cervical = ifelse(know_cervical>=3, 1,0) %>% factor(labels = c("Poor", "Good")),
+    prac_cervical = ifelse(prac_cervical>=3, 1,0) %>% factor(labels = c("Poor", "Good"))
+  ) %>% 
+  select(
+    age,Sex,Family,dgraduation,dx_self_cancer,know_ca_scrn,att_ca_scrn,dept,
+    know_breast,prac_breast,know_colon,prac_colon,know_prostate,prac_prostate,know_cervical,prac_cervical
+  )
+```
+
+
+
+
+
+
+
+```{r}
+meth <- rep("logreg", 16)
+meth[1] <- "polyreg"
+meth[4] <- "polyreg"
+
+# Number of imputations
+m <- 5
+
+# Run JM (jomo) imputation in mice
+imp <- mice(data_mod, method = meth, m = m, seed = 123)
+
+# Get completed dataset
+data_mod <- complete(imp, action = m)
+```
+
+```{r}
+saveRDS(data_mod, "Data/model_data.RDS")
+```
+
+
+
+
+
+```{r}
+saveRDS(data, "Data/data_with_score.RDS")
+```
+
+
+
+
+
+# Socre Tables
+## Breast
+```{r}
+data_mod %>%
+  select(know_breast:prac_breast) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> score_breast
+score_breast
+```
+
+## Colon
+```{r}
+data_mod %>%
+  select(know_colon:prac_colon) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> score_colon
+score_colon
+```
+
+## Prostate 
+```{r}
+data_mod %>%
+  select(know_prostate:prac_prostate) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> score_prostate
+score_prostate
+```
+
+## Cervical
+```{r}
+data_mod %>%
+  select(know_cervical:prac_cervical) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "always",
+    missing_text = "Missing"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> score_cervical
+score_cervical
+```
+
+
+
+
+
+
+
+
+# Table Score
+```{r}
+read_docx() %>% 
+  body_add_par(value = "Breast Score Table") %>%
+  body_add_flextable(value = score_breast) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Colon Score Table") %>%
+  body_add_flextable(value = score_colon) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Prostate Score Table") %>%
+  body_add_flextable(value = score_prostate) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Cervical Score Table") %>%
+  body_add_flextable(value = score_cervical) %>%
+  body_add_par(value = "") %>%
+  print(target = "doc/score_table_bin.docx")
+```
+
+
+```{r}
+names(data)
+```
+
+
+
+```{r}
+lab <- c("<30", "30-40", ">40")
+
+data <- data %>% 
+  mutate(
+    agebrcans = case_when(
+      agebrcans <  30~1,
+      agebrcans >= 30 & agebrcans <= 40 ~ 2, 
+      agebrcans >  40  ~ 3
+    ) %>% 
+      factor(, labels = lab),
+    age_cerv_start = case_when(
+      age_cerv_start <  30~1,
+      age_cerv_start >= 30 & age_cerv_start <= 40 ~ 2, 
+      age_cerv_start >  40  ~ 3
+    ) %>% 
+      factor(, labels = lab),
+    age_colon_ca = case_when(
+      age_colon_ca <  30~1,
+      age_colon_ca >= 30 & age_colon_ca <= 40 ~ 2, 
+      age_colon_ca >  40  ~ 3
+    ) %>% 
+      factor(, labels = lab),
+    ageproscs = case_when(
+      ageproscs <  30~1,
+      ageproscs >= 30 & ageproscs <= 40 ~ 2, 
+      ageproscs >  40  ~ 3
+    ) %>% 
+      factor(, labels = lab),
+  )
+
+
+table(data$agebrcans)
+table(data$age_cerv_start)
+table(data$age_colon_ca)
+table(data$ageproscs)
+```
+
+
+
+```{r}
+data %>% 
+  mutate(
+    durationscan = case_when(
+      durationscan <  5~1,
+      durationscan >= 5 & durationscan <= 10 ~ 2, 
+      durationscan >  10  ~ 3
+    ) %>% 
+      factor(, labels = c("<5", "5-10", ">10"))
+  ) %>% 
+  pull(durationscan) %>% table
+```
+
+
+

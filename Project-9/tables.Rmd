@@ -1,0 +1,618 @@
+---
+title: "Project 8"
+author: "Ibrahim All-Mamun"
+date: "2025-08-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+library(summarytools)
+library(openxlsx)
+
+library(forcats)
+
+library(dplyr)
+library(survival)
+library(survminer)
+
+library(labelled)
+
+library(mice)
+library(jomo)
+
+select <- dplyr::select
+```
+
+
+
+
+
+
+# Data
+```{r}
+data <- readRDS("Data/data_with_score.RDS")
+data_mod <- readRDS("Data/model_data.RDS")
+```
+
+
+
+
+
+# Demographic
+```{r}
+data %>%
+  select(age, Sex:dgraduation) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> demo_tab
+demo_tab
+```
+
+
+
+# Knowledge Table
+```{r}
+data %>%
+  select(dx_self_cancer:att_ca_scrn) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() %>% 
+  as_flex_table() -> know_tab
+know_tab
+```
+
+
+
+
+
+
+
+# Socre Tables
+## Breast
+```{r}
+data_mod %>%
+  select(know_breast:prac_breast) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> score_breast
+```
+
+## Cervical
+```{r}
+data_mod %>%
+  select(know_cervical:prac_cervical) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> score_cervical
+```
+
+
+```{r}
+(tbl_merge(
+  tbls = list("Breast Cancer" = score_breast, "Cervical Cancer" = score_cervical),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+  ) %>% as_flex_table -> score_br_cer)
+```
+
+
+
+
+
+## Prostate 
+```{r}
+data_mod %>%
+  select(know_prostate:prac_prostate) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> score_prostate
+```
+
+## Colon
+```{r}
+data_mod %>%
+  select(know_colon:prac_colon) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> score_colon
+```
+
+
+
+```{r}
+(tbl_merge(
+  tbls = list(score_prostate, score_colon),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+  ) %>% as_flex_table -> score_pr_col)
+```
+
+
+
+
+
+ 
+
+
+
+# Age Tables
+## Breast
+```{r}
+data %>%
+  select(agebrcans, age, Sex, dept, dx_self_cancer, dgraduation) %>%
+  tbl_summary(
+    by = agebrcans,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> age_breast
+```
+
+## Cervical
+```{r}
+data %>%
+  select(age_cerv_start, age, Sex, dept, dx_self_cancer, dgraduation ) %>%
+  tbl_summary(
+    by = age_cerv_start,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> age_cervical
+```
+
+
+```{r}
+(tbl_merge(
+  tbls = list("Breast Cancer" = age_breast, "Cervical Cancer" = age_cervical),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+  ) %>% as_flex_table -> age_br_cer)
+```
+
+
+
+
+
+## Prostate 
+```{r}
+data %>%
+  select(ageproscs, age, Sex, dept, dx_self_cancer, dgraduation) %>%
+  tbl_summary(
+    by = ageproscs,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> age_prostate
+```
+
+## Colon
+```{r}
+data %>%
+  select(age_colon_ca, age, Sex, dept, dx_self_cancer, dgraduation) %>%
+  tbl_summary(
+    by = age_colon_ca,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> age_colon
+```
+
+
+
+```{r}
+(tbl_merge(
+  tbls = list(age_prostate, age_colon),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+  ) %>% as_flex_table -> age_pr_col)
+```
+
+
+
+
+
+
+
+
+
+# Model
+## Formula
+```{r}
+fml <- list(
+  kb_fml = know_breast ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  pb_fml = prac_breast ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  kc_fml = know_colon ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  pc_fml = prac_colon ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  kp_fml = know_prostate ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  pp_fml = prac_prostate ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  kcr_fml = know_cervical ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept,
+  pcr_fml = prac_cervical ~ age + Sex + Family + dgraduation + dx_self_cancer + know_ca_scrn + att_ca_scrn + dept
+)
+```
+
+
+
+
+```{r}
+models <- lapply(fml, function(formula) {
+  glm(formula, data = data_mod, family = binomial)
+})
+```
+
+
+```{r}
+mod_tables <- lapply(models, function(mod) {
+  mod %>% 
+  tbl_regression(
+    exponentiate = T
+  )  %>% 
+  bold_labels() %>% 
+  modify_table_styling(
+    columns = c(estimate),
+    rows = reference_row == T,
+    missing_symbol = "1"
+  )
+}) %>% suppressWarnings
+```
+
+
+```{r}
+br_cer_kn_mod <- tbl_merge(
+  list(mod_tables$kb_fml, mod_tables$kcr_fml),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+) %>%
+  as_flex_table()
+
+br_cer_pr_mod <- tbl_merge(
+  list(mod_tables$pb_fml, mod_tables$pcr_fml),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+) %>%
+  as_flex_table()
+
+
+
+
+pro_col_kn_mod <- tbl_merge(
+  list(mod_tables$kp_fml, mod_tables$kc_fml),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+) %>%
+  as_flex_table()
+
+pro_col_pr_mod <- tbl_merge(
+  list(mod_tables$pp_fml, mod_tables$pc_fml),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+) %>%
+  as_flex_table()
+```
+
+
+
+
+
+
+# Know-Prac vs Covariate Table
+## Knowledge
+### Breast
+```{r}
+data_mod %>%
+  select(know_breast,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = know_breast,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> know_breast_cov
+```
+
+### Cervical
+```{r}
+data_mod %>%
+  select(know_cervical,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = know_cervical,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> know_cervical_cov
+```
+
+
+```{r}
+(tbl_merge(
+  tbls = list("Breast Cancer" = know_breast_cov, "Cervical Cancer" = know_cervical_cov),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+  ) %>% as_flex_table -> know_cov_br_cer)
+
+rm(know_breast_cov, know_cervical_cov)
+```
+
+
+
+
+
+### Prostate 
+```{r}
+data_mod %>%
+  select(know_prostate,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = know_prostate,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> know_prostate_cov
+```
+
+### Colon 
+```{r}
+data_mod %>%
+  select(know_colon,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = know_colon,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> know_colon_cov
+```
+
+
+
+```{r}
+(tbl_merge(
+  tbls = list(know_prostate_cov, know_colon_cov),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+  ) %>% as_flex_table -> know_cov_pr_col)
+
+rm(know_prostate_cov, know_colon_cov)
+```
+
+
+
+
+
+
+## Practice
+### Breast
+```{r}
+data_mod %>%
+  select(prac_breast,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = prac_breast,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> prac_breast_cov
+```
+
+### Cervical
+```{r}
+data_mod %>%
+  select(prac_cervical,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = prac_cervical,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> prac_cervical_cov
+```
+
+
+```{r}
+(tbl_merge(
+  tbls = list(prac_breast_cov, prac_cervical_cov),
+  tab_spanner = c("**Breast Cancer**", "**Cervical Cancer**")
+  ) %>% as_flex_table -> prac_cov_br_cer)
+
+rm(prac_breast_cov, prac_cervical_cov)
+```
+
+
+
+
+
+### Prostate 
+```{r}
+data_mod %>%
+  select(prac_prostate,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = prac_prostate,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> prac_prostate_cov
+```
+
+### Colon 
+```{r}
+data_mod %>%
+  select(prac_colon,age,Sex,dept,Family,dx_self_cancer,dgraduation,know_ca_scrn,att_ca_scrn) %>%
+  tbl_summary(
+    by = prac_colon,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no",
+  ) %>%
+  bold_labels() -> prac_colon_cov
+```
+
+
+
+```{r}
+(tbl_merge(
+  tbls = list(prac_prostate_cov, prac_colon_cov),
+  tab_spanner = c("**Prostate Cancer**", "**Colon Cancer**")
+  ) %>% as_flex_table -> prac_cov_pr_col)
+
+rm(prac_prostate_cov, prac_colon_cov)
+```
+
+
+
+
+
+
+
+# Breast - Cervical Tables
+```{r}
+read_docx() %>% 
+  body_add_par(value = "Demographic") %>%
+  body_add_flextable(value = demo_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Knowledge Table") %>%
+  body_add_flextable(value = know_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Score Table") %>%
+  body_add_par(value = "Knowledge") %>%
+  body_add_flextable(value = know_cov_br_cer) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Practice") %>%
+  body_add_flextable(value = prac_cov_br_cer) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Age of start of cancer screening") %>%
+  body_add_flextable(value = age_br_cer) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Knowledge Model") %>%
+  body_add_flextable(value = br_cer_kn_mod) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Practice Model") %>%
+  body_add_flextable(value = br_cer_pr_mod) %>%
+  body_add_par(value = "") %>%
+  print(target = "doc/Breast_Cervical_Tables.docx")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Prostate - Colon Tables
+```{r}
+read_docx() %>% 
+  body_add_par(value = "Demographic") %>%
+  body_add_flextable(value = demo_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Knowledge Table") %>%
+  body_add_flextable(value = know_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Score Table") %>%
+  body_add_par(value = "Knowledge") %>%
+  body_add_flextable(value = know_cov_pr_col) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Practice") %>%
+  body_add_flextable(value = prac_cov_pr_col) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Age of start of cancer screening") %>%
+  body_add_flextable(value = age_pr_col) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Knowledge Model") %>%
+  body_add_flextable(value = pro_col_kn_mod) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Practice Model") %>%
+  body_add_flextable(value = pro_col_pr_mod) %>%
+  body_add_par(value = "") %>%
+  print(target = "doc/Prostate_Colon_Tables.docx")
+```
+
+

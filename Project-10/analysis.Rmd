@@ -1,0 +1,929 @@
+---
+title: "Project 10"
+author: "Ibrahim All-Mamun"
+date: "2025-12-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+library(summarytools)
+library(openxlsx)
+
+library(forcats)
+
+library(dplyr)
+library(survival)
+library(survminer)
+
+library(labelled)
+
+library(mice)
+library(jomo)
+
+select <- dplyr::select
+source("codes.R")
+```
+
+
+
+```{r}
+data <- read.xlsx("Data/DATA-DM_HTN_updated.xlsx", 1)
+names(data)
+```
+
+```{r}
+data$HBA1C %>% is.na %>% sum
+data$Antihyper_prescriber %>% unique()
+data$HO_Hypertension %>% table()
+data$Physical %>% typeof()
+
+
+
+sum(data$FBS >= 6.9)
+```
+# Data
+```{r}
+read.xlsx("Data/DATA-DM_HTN_updated.xlsx", 1) %>%
+  mutate(
+    Age = case_when(Age < 50 ~ 1, 
+                    Age >= 50 & Age <= 60 ~ 2, 
+                    Age > 60  ~ 3) %>%
+      factor(labels = c("<50", "50-60", ">60")),
+    Gender =  factor(Gender, labels = c("Male", "Female")),
+    Smoking =  factor(Smoking, labels = all_labels$smoking),
+    Physical =  factor(Physical, labels = all_labels$physical),
+    Education =  factor(Education, labels = all_labels$education),
+    Income =  factor(Income, labels = all_labels$income),
+    Residence =  factor(Residence, labels = all_labels$residence),
+    Diabetic_medication =  factor(Diabetic_medication, labels = all_labels$DM),
+    Diabetic_Neuropathy =  factor(Diabetic_Neuropathy, labels = all_labels$yes_no),
+    HO_Hypertension =  factor(HO_Hypertension, labels = all_labels$yes_no),
+    Antihyper_medication =  factor(Antihyper_medication, labels = all_labels$yes_no),
+    Antihyper_regularly =  factor(Antihyper_regularly, labels = all_labels$yes_no),
+    Antihyper_prescriber =  factor(Antihyper_prescriber, labels = all_labels$antihyper_pres),
+    BP_frequency =  factor(BP_frequency, labels = all_labels$blood_freq),
+    Lipid_medication =  factor(Lipid_medication, labels = all_labels$yes_no),
+    BMI = Weight / (Height * 0.0254)^2,
+    BMI = case_when(
+      BMI < 25 ~ 1, 
+      BMI >= 25 & BMI < 30 ~ 2, 
+      BMI >= 30  ~ 3
+      ) %>%
+      factor(labels = c("Normal:<25", "Overweight:25–29.9", "Obese:≥30")),
+    Duration_HTN = case_when(
+      Duration_HTN <= 5 ~ 1, 
+      Duration_HTN > 5 & Duration_HTN <= 10 ~ 2, 
+      Duration_HTN > 10  ~ 3
+      ) %>%
+      factor(labels = c("≤5", "6-10", ">10")),
+    HBA1C = case_when(
+      HBA1C <= 7 ~ 1, 
+      HBA1C > 7 & HBA1C <= 8 ~ 2, 
+      HBA1C > 8  ~ 3
+      ) %>%
+      factor(labels = c("≤7", "7.01-8", ">8")),
+    Waist = case_when(
+      (Gender == "Male" & Waist < 94) | (Gender == "Female" & Waist < 84) ~ 0,
+      (Gender == "Male" & Waist >= 94) | (Gender == "Female" & Waist >= 84) ~ 1
+    ) %>%
+      factor(labels = c("(M<94,F<80)", "(M≥94,F≥80)")),
+    Occupation = case_when(
+      # TRUE ~ NA_real_,
+      Occupation %in% unemployed ~ 0,
+      Occupation %in% employed ~ 1
+    ) %>%
+      factor(labels = c("Unemployed", "Employed")),
+    Duration_Lipid_medication = case_when(
+      is.na(Duration_Lipid_medication) ~ NA_real_,
+      !Duration_Lipid_medication %in% c("2 years","5 yeas","3 years") ~ 0,
+      Duration_Lipid_medication %in% c("2 years","5 yeas","3 years") ~ 1
+    ) %>%
+      factor(labels = c("<2 Years", "≥2 Years")),
+    Duration_Diabetes = case_when(
+      Duration_Diabetes %in% c(
+        "new case",
+        "Newly dignosed",
+        "Newly diagnosed",
+        "newly diagnosed",
+        "Newly  diagnosed",
+        "new onset"
+      ) ~ 0,
+      suppressWarnings(as.numeric(Duration_Diabetes)) < 10 ~ 1,
+      suppressWarnings(as.numeric(Duration_Diabetes)) >= 10 ~ 2
+    ) %>%
+      factor(labels = c("Newly Diagnosed", "<10", "≥10")),
+    Comorbidities = case_when(
+  Comorbidities %in% comor$hypo~1,
+  Comorbidities %in% comor$ihd~2,
+  Comorbidities %in% comor$ihd_hypo~3,
+  Comorbidities %in% comor$stroke~4,
+  Comorbidities %in% comor$fld~5,
+  !Comorbidities %in% comor$all~6,
+  Comorbidities %in% comor$none~7,
+) %>% 
+  factor(labels = all_labels$comor),
+    High_cholesterol = if_else(Total_cholesterol >= 200, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    High_TG = if_else(TG >= 150, 1, 0),
+    High_LDL_C = if_else(LDL_C >= 100, 1, 0),
+    Low_HDL_C = case_when(
+      (Gender == "Male" & HDL_C < 40) | (Gender == "Female" & HDL_C < 50) ~ 1,
+      (Gender == "Male" & HDL_C >= 40) | (Gender == "Female" & HDL_C >= 50) ~ 0
+    ),
+    TG_LDL = if_else(High_TG + High_LDL_C == 2, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    TG_HDL = if_else(High_TG + Low_HDL_C == 2, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    LDL_HDL = if_else(Low_HDL_C + Low_HDL_C == 2, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    LDL_HDL_TG = if_else(Low_HDL_C + Low_HDL_C + High_TG == 3, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    No_dys = if_else(Low_HDL_C + Low_HDL_C + High_TG == 0, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    dys = if_else(Low_HDL_C + Low_HDL_C + High_TG > 0, 1, 0) %>%
+      factor(labels = all_labels$no_yes),
+    High_TG = factor(High_TG, labels = all_labels$no_yes),
+    High_LDL_C = factor(High_LDL_C, labels = all_labels$no_yes),
+    Low_HDL_C = factor(Low_HDL_C, labels = all_labels$no_yes),
+    RBS = case_when(
+          RBS < 7.8 ~ 1, 
+          RBS >= 7.8 & RBS <= 11.1 ~ 2, 
+          RBS > 11.1  ~ 3
+          ) %>%
+    factor(, labels = c("<7.8", "7.8-11.1", ">11.1")),
+    FBS = case_when(
+          FBS < 5.6 ~ 1, 
+          FBS >= 5.6 & FBS <= 6.9 ~ 2, 
+          FBS > 6.9  ~ 3
+          ) %>%
+    factor(, labels = c("5.6-6.9", "≥7")),
+    HTN = if_else(DBP>=90, 1, 0) %>% factor(, labels = c("Hypertensive", "Normotensive")),
+    Other_medications = case_when(
+      is.na(Other_medications)~0,
+      Other_medications %in% c("No ","None","No","no")~0,
+      .default = 1
+    ) %>% factor(, labels = all_labels$no_yes),
+  ) -> data
+
+data %>%
+  set_variable_labels(
+    Serial = "Serial",
+    ID = "Patient ID",
+    Name = "Name",
+    Age = "Age (years)",
+    Gender = "Gender",
+    Height = "Height (inch)",
+    Weight = "Weight (kg)",
+    Waist = "Waist circumference (cm)",
+    Smoking = "Smoking",
+    Physical = "Physical activity",
+    Education = "Education",
+    Income = "Monthly family income (BDT)",
+    Occupation = "Occupation",
+    Residence = "Residence",
+    Duration_Diabetes = "Duration of Diabetes (years)",
+    Diabetic_medication = "Type of Diabetic medication",
+    HBA1C = "HBA1C (%)",
+    RBS = "RBS",
+    FBS = "FBS",
+    HABF_2 = "2HABF",
+    Diabetic_Neuropathy = "Features of Diabetic Neuropathy",
+    SBP = "Systolic BP",
+    DBP = "Diastolic BP",
+    HO_Hypertension = "History of Hypertension",
+    Duration_HTN = "Duration of HTN in years",
+    Antihyper_medication = "Antihypertensive medication",
+    Antihyper_regularly = "Antihypertensive regularly",
+    Antihyper_prescriber = "Antihypertensive prescriber",
+    BP_frequency = "BP check frequency",
+    Lipid_medication = "Use Statin",
+    Duration_Lipid_medication = "Duration of Statin Use",
+    Total_cholesterol = "Total cholesterol",
+    HDL_C = "HDL-C",
+    LDL_C = "LDL-C",
+    TG = "TG",
+    Comorbidities = "Comorbidities",
+    Other_medications = "Polyphermacy",
+    Remarks = "Remarks",
+    High_cholesterol = "High Cholesterol",
+    High_TG = "High Triglycerides",
+    High_LDL_C = "High LDL-c",
+    Low_HDL_C = "Low HDL-c",
+    TG_LDL = "High LDL-c + High TG",
+    TG_HDL = "High TG + Low HDL-c",
+    LDL_HDL = "High LDL-c + Low HDL-c",
+    LDL_HDL_TG = "High LDL-c + Low HDL-c + High TG",
+    No_dys = "No Dyslipidemia",
+    BMI = "BMI",
+    HTN = "Hypertension",
+    dys = "Dyslipidemia",
+  ) -> data
+```
+
+# Dyslipidemia
+## Demography
+```{r}
+data %>%
+  select(
+    dys,
+  Age,
+  Gender,
+  BMI,
+  Waist,
+  Residence,
+  Education,
+  Occupation,
+  Income,
+  Smoking,
+  Physical,
+  Duration_Diabetes,
+  Diabetic_Neuropathy,
+  Diabetic_medication,
+  Lipid_medication,
+  Duration_Lipid_medication,
+  HBA1C,
+  RBS,
+  FBS,
+  HO_Hypertension,
+  Comorbidities,
+  Other_medications
+) %>%
+  tbl_summary(
+    by = dys,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  bold_labels() %>% 
+  as_flex_table() -> demo_tab
+demo_tab
+```
+
+
+## Dyslipidemia
+```{r}
+data %>%
+  select(Gender,
+       High_TG,
+       High_LDL_C,
+       Low_HDL_C,
+       TG_LDL,
+       TG_HDL,
+       LDL_HDL,
+       LDL_HDL_TG,
+       No_dys) %>%
+  tbl_summary(
+    by = Gender,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  bold_labels() %>% 
+  as_flex_table() -> dys_tab
+dys_tab
+```
+
+
+
+
+
+
+
+
+
+
+## Bivariate
+### Cholesterol
+
+```{r}
+data %>%
+  select(
+    High_cholesterol,
+    Age,
+    Gender,
+    BMI,
+    Waist,
+    Smoking,
+    HBA1C,
+    Duration_Diabetes,
+    Lipid_medication,
+    HO_Hypertension
+  ) %>%
+  tbl_summary(
+    by = High_cholesterol,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p() %>% 
+  bold_labels() -> cholesterol_tab
+cholesterol_tab
+```
+
+### TG
+
+```{r}
+data %>%
+  select(
+    High_TG,
+    Age,
+    Gender,
+    BMI,
+    Waist,
+    Smoking,
+    HBA1C,
+    Duration_Diabetes,
+    Lipid_medication,
+    HO_Hypertension
+  ) %>%
+  tbl_summary(
+    by = High_TG,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p() %>% 
+  bold_labels() -> TG_tab
+TG_tab
+```
+
+### LDL_C
+
+```{r}
+data %>%
+  select(
+    High_LDL_C,
+    Age,
+    Gender,
+    BMI,
+    Waist,
+    Smoking,
+    HBA1C,
+    Duration_Diabetes,
+    Lipid_medication,
+    HO_Hypertension
+  ) %>%
+  tbl_summary(
+    by = High_LDL_C,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p() %>% 
+  bold_labels() -> LDL_C_tab
+LDL_C_tab
+```
+
+### HDL_C
+
+```{r}
+data %>%
+  select(
+    Low_HDL_C,
+    Age,
+    Gender,
+    BMI,
+    Waist,
+    Smoking,
+    HBA1C,
+    Duration_Diabetes,
+    Lipid_medication,
+    HO_Hypertension
+  ) %>%
+  tbl_summary(
+    by = Low_HDL_C,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p() %>% 
+  bold_labels()  -> HDL_C_tab
+HDL_C_tab
+```
+
+
+
+
+```{r}
+tbl_merge(
+  tbls = list(cholesterol_tab, LDL_C_tab, TG_tab, HDL_C_tab),
+  tab_spanner = c("**High total cholesterol**", "**High LDL**", "**High Triglycerides**", "**Low HDL**")
+) %>% 
+  as_flex_table() -> bi_table
+bi_table
+```
+
+
+
+
+
+## Model
+```{r}
+data %>% 
+  filter(Smoking!="Former") %>% 
+  mutate(
+    Smoking = relevel(Smoking, ref = "No"),
+    HO_Hypertension = relevel(HO_Hypertension, ref = "No")
+  ) -> data2
+```
+
+
+```{r}
+models <- lapply(fml, function(formula) {
+  glm(formula, data = data2, family = binomial)
+})
+```
+
+
+
+```{r}
+mod_tables <- lapply(models, function(mod) {
+  mod %>% 
+  tbl_regression(
+    exponentiate = T
+  )  %>% 
+  bold_labels() %>% 
+  modify_table_styling(
+    columns = c(estimate),
+    rows = reference_row == T,
+    missing_symbol = "1"
+  )
+}) %>% suppressWarnings()
+
+```
+
+
+```{r}
+tbl_merge(
+  tbls = list(mod_tables$High_cholesterol, mod_tables$High_LDL_C),
+  tab_spanner = c("**High total cholesterol**", "**High LDL**")
+) %>% 
+  as_flex_table() -> mod_table1
+
+tbl_merge(
+  tbls = list(mod_tables$High_TG, mod_tables$Low_HDL_C),
+  tab_spanner = c("**High Triglycerides**", "**Low HDL**")
+) %>% 
+  as_flex_table() -> mod_table2
+
+```
+
+
+
+
+## Table Combine
+```{r}
+read_docx() %>% 
+  # body_add_par(value = "Demographic Table") %>%
+  # body_add_flextable(value = demo_tab) %>%
+  # body_add_par(value = "") %>%
+  # body_add_par(value = "Dyslipidemia Table") %>%
+  # body_add_flextable(value = dys_tab) %>%
+  # body_add_par(value = "") %>%
+  # body_add_par(value = "Bivariate Table") %>%
+  # body_add_flextable(value = bi_table) %>%
+  # body_add_par(value = "") %>%
+  # body_add_par(value = "Models") %>%
+  # body_add_par(value = "High cholesterol Table") %>%
+  # body_add_flextable(value = as_flex_table(mod_tables$High_cholesterol)) %>%
+  # body_add_par(value = "") %>%
+  # body_add_par(value = "High LDL-C Table") %>%
+  # body_add_flextable(value = as_flex_table(mod_tables$High_LDL_C)) %>%
+  # body_add_par(value = "") %>%
+  # body_add_par(value = "Model") %>%
+  body_add_flextable(value = mod_table1) %>%
+  body_add_par(value = "") %>%
+  # body_add_par(value = "Low HDL-C Table") %>%
+  body_add_flextable(value = mod_table2) %>%
+  print(target = "doc/all_table.docx")
+```
+
+
+Age + Gender + Smoking + Occupation + Income + Physical + Waist + BMI + Residence + HBA1C + Duration_Diabetes + HO_Hypertension
+
+
+```{r}
+data %>%
+  tbl_summary(
+    by = Smoking,
+    include = c(
+       High_cholesterol,
+       High_TG,
+       High_LDL_C,
+       Low_HDL_C),
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  bold_labels() 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Hypertension
+## Demography
+```{r}
+data %>%
+  select(
+    HTN,
+  Age,
+  Gender,
+  BMI,
+  Waist,
+  Residence,
+  Education,
+  Occupation,
+  Income,
+  Smoking,
+  Physical,
+  Duration_Diabetes,
+  Diabetic_Neuropathy,
+  Diabetic_medication,
+  Lipid_medication,
+  Duration_Lipid_medication,
+  dys,
+  HBA1C,
+  RBS,
+  FBS,
+  HO_Hypertension,
+  Comorbidities,
+  Other_medications
+) %>%
+  tbl_summary(
+    by = HTN,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  bold_labels() %>% 
+  as_flex_table() -> demo_tab
+demo_tab
+```
+
+
+
+
+
+
+
+## Hyper
+```{r}
+data %>%
+  select(Gender,
+      HO_Hypertension,
+      Duration_HTN,
+      Antihyper_medication,
+      Antihyper_regularly,
+      Antihyper_prescriber,
+      BP_frequency) %>%
+  tbl_summary(
+    by = Gender,
+    statistic = list(
+      all_continuous() ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_overall(last = T) %>%
+  bold_labels() %>% 
+  as_flex_table() -> dys_tab
+dys_tab
+```
+
+
+
+
+## Model
+```{r}
+data2 %>% 
+  filter(Smoking!="Former") %>% 
+  mutate(
+    Smoking = relevel(Smoking, ref = "No"),
+    HO_Hypertension = relevel(HO_Hypertension, ref = "No"),
+    HTN = relevel(HTN, ref = "Normotensive")
+  ) -> data2
+```
+
+```{r}
+formula <- HTN ~ Age + Gender + Smoking + Physical + Waist + BMI + Residence + HBA1C + BP_frequency + Diabetic_medication + dys + Other_medications
+
+model <- glm(formula, data = data2, family = binomial)
+```
+
+
+
+```{r}
+mod_table <- model %>%
+  tbl_regression(exponentiate = T)  %>%
+  bold_labels() %>%
+  modify_table_styling(
+    columns = c(estimate),
+    rows = reference_row == T,
+    missing_symbol = "1"
+  ) %>% 
+  as_flex_table()
+mod_table
+```
+
+
+## Table Combine
+```{r}
+read_docx() %>% 
+  body_add_par(value = "Demographic Table") %>%
+  body_add_flextable(value = demo_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Hyper Table") %>%
+  body_add_flextable(value = dys_tab) %>%
+  body_add_par(value = "") %>%
+  body_add_par(value = "Model") %>%
+  body_add_flextable(value = mod_table) %>%
+  print(target = "doc/hypertension2.docx")
+```
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+```{r}
+data %>% 
+  mutate(
+    Smoking = relevel(Smoking, ref = "No"),
+    HO_Hypertension = relevel(HO_Hypertension, ref = "No"),
+    HTN = relevel(HTN, ref = "Normotensive")
+  ) -> data
+```
+
+ 
+ 
+```{r}
+calc_crude <- function(var) {
+  fml <- as.formula(paste("HTN ~", var))
+  
+  glm(fml, family = binomial, data = data2)  %>% 
+    coef()  %>% 
+    exp()
+}
+
+```
+ 
+```{r}
+library(nnet)
+
+calc_crude <- function(var) {
+  fml <- as.formula(paste("HTN ~", var))
+  
+  multinom(fml, data = data2)  %>% 
+    coef()  %>% 
+    exp()
+}
+
+data2$Smoking
+```
+
+
+```{r}
+calc_crude("Age")
+calc_crude("Gender")
+calc_crude("Smoking")
+calc_crude("Physical")
+calc_crude("Waist")
+calc_crude("BMI")
+calc_crude("Residence")
+calc_crude("HBA1C")
+calc_crude("BP_frequency")
+calc_crude("Diabetic_medication")
+calc_crude("dys")
+calc_crude("HO_Hypertension")
+calc_crude("Other_medications")
+```
+
+
+
+
+
+
+
+# Plot
+
+
+```{r}
+library(tidyverse)
+
+df <- tribble(
+  ~Characteristic, ~AOR, ~LCL, ~UCL,
+  
+  "01 Age 50–60", 0.63, 0.30, 1.28,
+  "01 Age >60", 0.31, 0.12, 0.74,
+  "01 z", 0, 0, 0,
+  
+  "02 Gender Female", 0.71, 0.33, 1.50,
+  "02 z", 0, 0, 0,
+  
+  "03 Smoking (Yes)", 1.30, 0.40, 4.38,
+  "03 z", 0, 0, 0,
+  
+  "04 Physical Moderate activity", 1.07, 0.47, 2.44,
+  "04 Physical Active", 0.91, 0.33, 2.49,
+  "04 z", 0, 0, 0,
+  
+  "05 Waist circumference (M≥94,F≥80)", 0.78, 0.36, 1.68,
+  "05 z", 0, 0, 0,
+  
+  "06 BMI Overweight:25-29.9", 0.46, 0.19, 1.09,
+  "06 BMI Obese:≥30", 0.87, 0.36, 2.08,
+  "06 z", 0, 0, 0,
+  
+  "07 Residence Urban", 1.17, 0.55, 2.52,
+  "07 z", 0, 0, 0,
+  
+  "08 HbA1c 7.01–8", 1.10, 0.55, 2.20,
+  "08 HbA1c >8", 0.77, 0.12, 4.44,
+  "08 z", 0, 0, 0,
+  
+  "09 BP check frequency 3 monthly", 1.25, 0.52, 3.04,
+  "09 BP check frequency 6 monthly", 1.35, 0.54, 3.44,
+  "09 BP check frequency Yearly", 1.02, 0.32, 3.27,
+  "09 BP check frequency not measured", 0.82, 0.18, 3.59,
+  "09 z", 0, 0, 0,
+  
+  "10 Diabetic medication Insulin", 2.62, 0.49, 20.5,
+  "10 Diabetic medication Both", 1.84, 0.68, 5.12,
+  "10 Diabetic medication Diet and discipline", 1.61, 0.53, 5.06,
+  "10 Diabetic medication None (Newly diagnosed)", 2.55, 0.87, 8.03,
+  "10 Diabetic medication Alternative medicine", 0.85, 0.03, 28.0,
+  "10 z", 0, 0, 0,
+  
+  "11 Dyslipidemia", 0.14, 0.04, 0.44,
+  "11 z", 0, 0, 0,
+  
+  "12 Polypharmacy", 1.69, 0.91, 3.19
+)
+```
+
+
+
+
+```{r}
+ggplot(df, aes(x = AOR, y = Characteristic)) +
+  geom_point(size = 3) +
+  geom_errorbarh(aes(xmin = LCL, xmax = UCL), height = 0.2) +
+  geom_vline(xintercept = 1, linetype = "dashed") +
+  scale_x_log10() +
+  labs(
+    x = "Adjusted Odds Ratio",
+    y = "",
+    title = "Factors Associated with Hypertention"
+  ) +
+  theme_minimal(base_size = 12)
+
+```
+
+
+
+
+
+```{r}
+df <- as.data.frame(table(Age = data$Age, HTN = data$HTN))
+
+p <- ggplot(df, aes(x = HTN, y = Freq, fill = Age)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color="black") +
+  labs(
+    x = "HTN",
+    y = "Frequency",
+    fill = "Age",
+    title = "Age by Hypertension Status"
+  ) +
+  scale_fill_grey(start = 0.2, end = 0.9) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "right"
+  ) 
+ggsave(filename = "graph/HTN_AGE.jpg", plot = p, width = 7.3, height = 4.2, dpi = 300)
+```
+
+
+```{r}
+p <- ggplot(df, aes(x = Age, y = Freq, fill = HTN)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color="black") +
+  labs(
+    x = "Age",
+    y = "Frequency",
+    fill = "HTN",
+    title = "Age by Hypertension Status"
+  ) +
+  scale_fill_grey(start = 0.2, end = 0.9) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "right"
+  )
+ggsave(filename = "graph/AGE_HTN.jpg", plot = p, width = 7.3, height = 4.2, dpi = 300)
+```
+
+
+```{r}
+df <- as.data.frame(table(Gender = data$Gender, HTN = data$HTN))
+
+p <- ggplot(df, aes(x = HTN, y = Freq, fill = Gender)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.8), color="black") +
+  labs(
+    x = "HTN",
+    y = "Frequency",
+    fill = "Gender",
+    title = "Gender by Hypertension Status"
+  ) +
+  scale_fill_grey(start = 0.2, end = 0.9) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "right"
+  )
+ggsave(filename = "graph/GENDER_HTN.jpg", plot = p, width = 7.3, height = 4.2, dpi = 300)
+
+```
+
+
+
+```{r}
+write_sav(data, "Data/dys.sav")
+```
+
