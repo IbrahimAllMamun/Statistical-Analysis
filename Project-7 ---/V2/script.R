@@ -4,8 +4,8 @@
 # ============================================================
 # Variable mapping (confirmed from dataset):
 #   denovometastasis == 1  →  De novo MBC
-#   recume           == 1  →  Metachronous MBC
-#   mbc_type  = derived grouping variable (De novo / Metachronous)
+#   recume           == 1  →  Recurrent MBC
+#   mbc_type  = derived grouping variable (De novo / Recurrent)
 # ============================================================
 
 library(haven)
@@ -73,7 +73,7 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
       .default    = 3
     ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
     
-    # ── De novo / Metachronous flags ───────────────────────
+    # ── De novo / Recurrent flags ───────────────────────
     denovometastasis = denovometastasis %>% labelled::unlabelled(),
     denovometastasis = denovometastasis %>% as.character() %>% as.numeric(),
     denovometastasis = case_when(
@@ -84,16 +84,16 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
     
     recume = recume %>% labelled::unlabelled(),
     recume = recume %>% as.character() %>% as.numeric() %>%
-      factor(labels = c("Yes", "No")),        # Yes = metachronous (recurrent) metastasis
+      factor(labels = c("Yes", "No")),        # Yes = Recurrent (recurrent) metastasis
     
     # ── Derived grouping variable (paper's primary comparison) ──
     # denovometastasis==Yes  →  De novo MBC
-    # recume==Yes            →  Metachronous MBC
+    # recume==Yes            →  Recurrent MBC
     mbc_type = case_when(
       denovometastasis == "Yes" ~ "De novo MBC",
-      recume           == "Yes" ~ "Metachronous MBC",
+      recume           == "Yes" ~ "Recurrent MBC",
       .default = NA_character_
-    ) %>% factor(levels = c("De novo MBC", "Metachronous MBC")),
+    ) %>% factor(levels = c("De novo MBC", "Recurrent MBC")),
     
     # ── Clinical subtype (HR+/HER2+, HR+/HER2-, HR-/HER2+, HR-/HER2-) ──
     # HR positive = ER+ or PR+
@@ -196,7 +196,7 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
     symp_12  = ifelse(str_detect(symptoms, "\\b12\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
     symp_16  = ifelse(str_detect(symptoms, "\\b16\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
     
-    # ── Prior stage (for metachronous sub-analysis) ────────
+    # ── Prior stage (for Recurrent sub-analysis) ────────
     # prestage: 1=Stage1, 2=Stage2, 3=Stage3 (de novo patients have missing)
     prestage = prestage %>% labelled::unlabelled(),
     prestage = case_when(
@@ -278,7 +278,7 @@ tab2 <- data %>%
     mbc_type,
     mburden,
     Lung, Liver, Brain, Bone, opposite_breast, Others,
-    prestage          # prior stage (only relevant for metachronous)
+    prestage          # prior stage (only relevant for Recurrent)
   ) %>%
   tbl_summary(
     by = mbc_type,
@@ -290,7 +290,7 @@ tab2 <- data %>%
       Bone            ~ "Bone metastasis",
       opposite_breast ~ "Opposite breast metastasis",
       Others          ~ "Other/multiple sites",
-      prestage        ~ "Prior disease stage (metachronous only)"
+      prestage        ~ "Prior disease stage (Recurrent only)"
     ),
     statistic = list(all_categorical() ~ "{n} ({p}%)"),
     missing   = "no"
@@ -405,7 +405,7 @@ get_survival_stats <- function(df, subtype_label = "Overall") {
   
   tibble(
     `Clinical Subtype`   = c(subtype_label, ""),
-    Group                = c("De novo MBC", "Metachronous MBC"),
+    Group                = c("De novo MBC", "Recurrent MBC"),
     N                    = ns,
     `Median OS (months)` = round(med, 1),
     `HR (unadjusted)`    = c("Reference",
@@ -438,35 +438,35 @@ tab4_ft <- flextable(tab4_data) %>%
   hline(i = c(2, 4, 6, 8), border = officer::fp_border(color = "grey70")) %>%
   autofit() %>%
   theme_booktabs() %>%
-  set_caption("Table 4. Median overall survival and hazard ratios – de novo vs. metachronous MBC")
+  set_caption("Table 4. Median overall survival and hazard ratios – de novo vs. Recurrent MBC")
 
 tab4_ft
 
 
 # =============================================================
-# TABLE 5 – Sub-analysis: prior disease stage among metachronous
+# TABLE 5 – Sub-analysis: prior disease stage among Recurrent
 # Analog of Table 5 in Slotman et al. (2026)
-# Paper: stratifies metachronous MBC by prior (neo)adjuvant
+# Paper: stratifies Recurrent MBC by prior (neo)adjuvant
 #        systemic treatment. Dataset proxy: prior stage (prestage)
 # Groups:
 #   1. De novo MBC
-#   2. Metachronous MBC – prior Stage 3 (most likely to have had prior chemo/RT)
-#   3. Metachronous MBC – prior Stage 1–2 (less intensive prior treatment)
+#   2. Recurrent MBC – prior Stage 3 (most likely to have had prior chemo/RT)
+#   3. Recurrent MBC – prior Stage 1–2 (less intensive prior treatment)
 # =============================================================
 data_sub <- data %>%
   filter(!is.na(os_time), !is.na(status)) %>%
   mutate(
     prior_tx_group = case_when(
       mbc_type == "De novo MBC"                                     ~ "De novo MBC",
-      mbc_type == "Metachronous MBC" & prestage == "Stage 3"        ~ "Metachronous – Prior Stage 3",
-      mbc_type == "Metachronous MBC" & prestage %in% c("Stage 1","Stage 2") ~ "Metachronous – Prior Stage 1/2",
-      mbc_type == "Metachronous MBC" & is.na(prestage)              ~ "Metachronous – Stage unknown",
+      mbc_type == "Recurrent MBC" & prestage == "Stage 3"        ~ "Recurrent – Prior Stage 3",
+      mbc_type == "Recurrent MBC" & prestage %in% c("Stage 1","Stage 2") ~ "Recurrent – Prior Stage 1/2",
+      mbc_type == "Recurrent MBC" & is.na(prestage)              ~ "Recurrent – Stage unknown",
       .default = NA_character_
     ) %>% factor(levels = c(
       "De novo MBC",
-      "Metachronous – Prior Stage 3",
-      "Metachronous – Prior Stage 1/2",
-      "Metachronous – Stage unknown"
+      "Recurrent – Prior Stage 3",
+      "Recurrent – Prior Stage 1/2",
+      "Recurrent – Stage unknown"
     ))
   ) %>%
   filter(!is.na(prior_tx_group))
@@ -517,7 +517,7 @@ km_plot <- function(df, title = "") {
     ylab              = "Overall survival probability",
     title             = title,
     legend.title      = "",
-    legend.labs       = c("De novo MBC", "Metachronous MBC"),
+    legend.labs       = c("De novo MBC", "Recurrent MBC"),
     palette           = c("#2166AC", "#D6604D"),
     ggtheme           = theme_classic(base_size = 12),
     surv.median.line  = "hv"
