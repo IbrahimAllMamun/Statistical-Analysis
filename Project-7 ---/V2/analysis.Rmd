@@ -1,0 +1,750 @@
+---
+title: "Project 7"
+author: "Ibrahim All-Mamun"
+date: "2025-08-19"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+
+library(dplyr)
+library(survival)
+library(survminer)
+library(gt)
+```
+
+
+```{r}
+names(data)
+```
+
+```{r}
+# read_sav("Data/Metastatic breast cancer study_new dataset.sav") -> data1
+read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>% 
+  mutate(
+    age_grp = case_when(
+      age < 35 ~ 1, 
+      age >= 35 & age < 45 ~ 2, 
+      age >= 45 & age < 55 ~ 3, 
+      age >= 55 ~ 4
+      ) %>% 
+      factor(labels = c("<35", "35-45", "45-55", "55+")),
+    Residence = Residence %>% as_factor(),
+    Education = Education %>% as_factor(),
+    Smoking = Smoking %>% as_factor(),
+    Income = Income %>% as_factor(),
+
+    # Metastasis
+    sitemetastasis = sitemetastasis %>% labelled::unlabelled(),
+    sitemetastasis = ifelse(sitemetastasis == "", NA, sitemetastasis),
+    Lung = ifelse(str_detect(sitemetastasis, "\\b1\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Brain = ifelse(str_detect(sitemetastasis, "\\b2\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Liver = ifelse(str_detect(sitemetastasis, "\\b3\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Bone = ifelse(str_detect(sitemetastasis, "\\b4\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    opposite_breast = ifelse(str_detect(sitemetastasis, "\\b5\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Others = ifelse(str_detect(sitemetastasis, "\\b6\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Multiple_site = ifelse(str_detect(sitemetastasis, "\\b7\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+
+
+    # ER, PR, HER, Recume
+    ER = ER %>% labelled::unlabelled(),
+    ER = case_when(
+      ER == "1" ~ 1,
+      ER == "2" ~ 2,
+      .default = 3
+    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+    PR = PR %>% labelled::unlabelled(),
+    PR = case_when(
+      PR == "1" ~ 1,
+      PR == "2" ~ 2,
+      .default = 3
+    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+    her2 = her2 %>% labelled::unlabelled(),
+    her2 = case_when(
+      her2 == "1" ~ 1,
+      her2 == "2" ~ 2,
+      .default = 3
+    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+    denovometastasis = denovometastasis %>% labelled::unlabelled(),
+    denovometastasis = denovometastasis %>% as.character() %>% as.numeric(),
+    denovometastasis = case_when(
+      denovometastasis == 1~1,
+      denovometastasis == 2~2,
+      .default = NA_integer_
+    ) %>% factor(label=c("Yes", "No")),
+    recume = recume %>% labelled::unlabelled(),
+    recume = recume %>% as.character() %>% as.numeric() %>% factor(labels = c("Yes", "No")),
+    
+    # Skip & CS
+    skip = skip %>% as.character() %>% as.numeric() %>% factor(label=c("Non Adherent", "Adherent")),
+    cs = cs %>% as.character() %>% as.numeric() %>% factor(label=c("Alive with disease", "Disease free", "Death")),
+    
+    # Delay
+    mburden = mburden %>% labelled::unlabelled(),
+    mburden = mburden %>% as.character() %>% as.numeric(),
+    mburden = case_when(
+      mburden == 1~1,
+      mburden %in% 2:3~2,
+      mburden > 3~3,
+      .default = NA_integer_
+    ) %>% factor(label=c("1 site", "2-3 sites", ">3 sites")),
+    delayrx = delayrx %>% labelled::unlabelled(),
+    delayrx = case_when(
+      delayrx == "1" ~ 1,
+      delayrx == "2" ~ 2,
+      .default = 3
+    ) %>% factor(labels = c("Yes", "No", "Unknown")),
+    symptomaticresponse = symptomaticresponse %>% labelled::unlabelled(),
+    symptomaticresponse = case_when(
+      symptomaticresponse == "1" ~ 1,
+      symptomaticresponse == "2" ~ 2,
+      .default = NA
+    ) %>% factor(labels = c("Adequate", "Inadequate")),
+    
+    # Radiological Response
+    radiologivcalresponse = radiologivcalresponse %>% labelled::unlabelled(),
+    radiologivcalresponse = case_when(
+      radiologivcalresponse == "1" ~ 1,
+      radiologivcalresponse == "2" ~ 2,
+      radiologivcalresponse == "3" ~ 3,
+      radiologivcalresponse == "4" ~ 4,
+      .default = 5
+    ) %>% factor(labels = c("Stable", "progressive disease", "partial response", "complete response", "Unknown")),
+    grading = grading %>% labelled::unlabelled(),
+    grading = case_when(
+      grading == "1" ~ 1,
+      grading == "2" ~ 2,
+      grading == "3" ~ 3,
+      .default = 4
+    ) %>% factor(labels = c("Grade 1", "Grade 2", "Grade 3", "Unknown")),
+    surgery = surgery %>% labelled::unlabelled(),
+    surgery = case_when(
+      surgery == "1" ~ 1,
+      surgery == "2" ~ 2,
+      surgery == "3" ~ 3,
+      .default = 4
+    ) %>% factor(labels = c("Mastectomy", "Biopsy", "None")),
+    
+    # Recieved Treatment
+    rxreceived = rxreceived %>% labelled::unlabelled(),
+    rxreceived = ifelse(rxreceived=="",NA,rxreceived),
+    Chemotherapy = ifelse(str_detect(rxreceived, "\\b1\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Palliative_Radiotherapy = ifelse(str_detect(rxreceived, "\\b2\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Hormone_Therapy = ifelse(str_detect(rxreceived, "\\b3\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Targeted_Therapy = ifelse(str_detect(rxreceived, "\\b5\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Zoledronic_Acid = ifelse(str_detect(rxreceived, "\\b6\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+
+    
+    # Symptoms
+    symptoms = symptoms %>% labelled::unlabelled(),
+    symp_01 = ifelse(str_detect(symptoms, "\\b1\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_02 = ifelse(str_detect(symptoms, "\\b2\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_06 = ifelse(str_detect(symptoms, "\\b6\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_07 = ifelse(str_detect(symptoms, "\\b7\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_08 = ifelse(str_detect(symptoms, "\\b8\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_09 = ifelse(str_detect(symptoms, "\\b9\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_10 = ifelse(str_detect(symptoms, "\\b10\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_11 = ifelse(str_detect(symptoms, "\\b11\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_12 = ifelse(str_detect(symptoms, "\\b12\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    symp_16 = ifelse(str_detect(symptoms, "\\b16\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    
+    status = ifelse(cs == "Death", 1, 0)
+  ) -> data 
+```
+
+
+# Table 1
+```{r}
+data %>%
+  select(age_grp, Residence, Education, Smoking, Income) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> demo_tab
+demo_tab
+```
+
+
+```{r}
+doc <- read_docx() 
+
+doc <- doc %>% 
+  body_add_par(value = "Demographic Table") %>%
+  body_add_flextable(value = as_flex_table(demo_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+# Table 2
+```{r}
+data <- data %>% 
+  mutate(
+    causesrmetast = causesrmetast %>% labelled::unlabelled(),
+    CT_not_completed = ifelse(str_detect(causesrmetast, "\\b1\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    RT_not_completed = ifelse(str_detect(causesrmetast, "\\b2\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Treatment_completed_but_not_with_in_time = ifelse(str_detect(causesrmetast, "\\b3\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+    Unknown = ifelse(str_detect(causesrmetast, "\\b4\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
+  )
+
+
+# TODO: cause of recurrent: 55
+data %>%
+  select(recume, Lung, Brain, Liver, Bone, opposite_breast, Others, Multiple_site, CT_not_completed, RT_not_completed, Treatment_completed_but_not_with_in_time, Unknown) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> meta_tab
+meta_tab
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Metastatic Table") %>%
+  body_add_flextable(value = as_flex_table(meta_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+# Table 3
+```{r}
+data %>%
+  select(age_grp, ER, PR, her2, recume, denovometastasis, Lung, Brain, Liver, Bone, opposite_breast, Others, Multiple_site) %>%
+  tbl_summary(
+    by = age_grp,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p( # Add p-values
+    test = list(
+      all_continuous() ~ "t.test",         # Use ANOVA for continuous
+      all_categorical() ~ "chisq.test"  # Use Chi-square for categorical
+    )
+  ) %>%
+  bold_labels() -> bivar_tab
+bivar_tab
+```
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Bivariate Table") %>%
+  body_add_flextable(value = as_flex_table(bivar_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+```{r}
+data %>%
+  select(ER, Lung, Brain, Liver, Bone, opposite_breast, Others, Multiple_site) %>%
+  tbl_summary(
+    by = ER,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> er_tab
+
+data %>%
+  select(PR, Lung, Brain, Liver, Bone, opposite_breast, Others, Multiple_site) %>%
+  tbl_summary(
+    by = PR,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> pr_tab
+
+data %>%
+  select(her2, Lung, Brain, Liver, Bone, opposite_breast, Others, Multiple_site) %>%
+  tbl_summary(
+    by = her2,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> her_tab
+
+tbl_merge(
+  tbls = list(er_tab, pr_tab, her_tab),
+  tab_spanner = c("ER", "PR", "HER2")
+) -> er_pr_her
+```
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "ER/PR/HER2 Table") %>%
+  body_add_flextable(value = as_flex_table(er_pr_her)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Table 3
+```{r}
+data %>%
+  select(mburden , ER, PR, her2) %>%
+  tbl_summary(
+    by = mburden,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> mburden_tab
+mburden_tab
+
+data %>%
+  select(denovometastasis , ER, PR, her2) %>%
+  tbl_summary(
+    by = denovometastasis,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> den_tab
+den_tab
+
+data %>%
+  select(recume , ER, PR, her2) %>%
+  tbl_summary(
+    by = recume,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> recume_tab
+recume_tab
+
+tbl_merge(
+  tbls = list(mburden_tab, recume_tab, den_tab),
+  tab_spanner = c("Metastasis Burden", "Recurrent Metastasis", "Denovo Metastasis")
+) -> denrec_tab
+denrec_tab
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Denovo, Recurrent Table") %>%
+  body_add_flextable(value = as_flex_table(denrec_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+# Table 4
+```{r}
+data %>%
+  select(cs, skip) %>%
+  tbl_summary(
+    by = skip,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p( # Add p-values
+    test = list(
+      all_continuous() ~ "t.test",         # Use ANOVA for continuous
+      all_categorical() ~ "chisq.test"  # Use Chi-square for categorical
+    )
+  ) %>%
+  bold_labels() -> surv_tab
+surv_tab
+```
+
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Survival Table") %>%
+  body_add_flextable(value = as_flex_table(surv_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+
+
+# Table 5
+```{r}
+data %>%
+  select(delayrx, recume, symptomaticresponse) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  bold_labels() -> delay_tab
+delay_tab
+```
+
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Delay Table") %>%
+  body_add_flextable(value = as_flex_table(delay_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+# Table 6
+```{r}
+data %>%
+  select(cs, symptomaticresponse, radiologivcalresponse, skip, grading, Chemotherapy,Palliative_Radiotherapy,Hormone_Therapy, Targeted_Therapy, Zoledronic_Acid, denovometastasis, mburden, recume, surgery, symp_01, symp_02, symp_06, symp_07, symp_08, symp_09, symp_10, symp_11, symp_12, symp_16, CT_not_completed, RT_not_completed, Treatment_completed_but_not_with_in_time, Unknown) %>%
+  tbl_summary(
+    by = cs,
+    statistic = list(
+      all_continuous() ~ "{mean} ({sd})",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits = all_continuous() ~ 2,
+    missing = "no"
+  ) %>%
+  add_p( # Add p-values
+    test = list(
+      all_continuous() ~ "t.test",         # Use ANOVA for continuous
+      all_categorical() ~ "chisq.test"  # Use Chi-square for categorical
+    )
+  ) %>%
+  bold_labels() -> large_tab
+large_tab
+```
+
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "CS vs All Table") %>%
+  body_add_flextable(value = as_flex_table(large_tab)) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+
+
+```{r}
+# Fit model
+cox_model <- coxph(
+  Surv(timeofdeath, status) ~ Lung + Brain + Liver + Bone + opposite_breast + Others + age_grp + recume + grading + surgery + symptomaticresponse+ delayrx,
+  data = data,
+  
+)  # no predictors yet
+```
+```{r}
+# Create gtsummary table
+tbl <- tbl_regression(
+  cox_model,
+  exponentiate = TRUE,  # gives Hazard Ratios instead of log(coef)
+  label = list(
+    Lung ~ "Lung Metastasis",
+    Brain ~ "Brain Metastasis",
+    Liver ~ "Liver Metastasis",
+    Bone ~ "Bone Metastasis",
+    opposite_breast ~ "Opposite Breast Metastasis",
+    Others ~ "Other Metastasis",
+    age_grp ~ "Age Group",
+    recume ~ "Recurrence",
+    grading ~ "Tumor Grade",
+    surgery ~ "Surgery",
+    symptomaticresponse ~ "Symptomatic Response",
+    delayrx ~ "Delayed Rx"
+  ),
+) %>% 
+  bold_p(t = 0.05) %>% 
+  bold_labels()
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Cox Model") %>%
+  body_add_flextable(value = as_flex_table(tbl)) %>% 
+  body_add_par(value = "")
+```
+
+
+# Overall KM table
+```{r}
+# Survival object
+surv_obj <- Surv(time = data$timeofdeath, event = data$status)
+
+# Fit survival curve
+km_fit <- survfit(surv_obj ~ 1, data = data)
+
+# Extract summary
+km_summary <- summary(km_fit)
+
+# Convert to data frame
+km_df <- data.frame(
+  time   = km_summary$time,
+  n_risk = km_summary$n.risk,
+  n_event= km_summary$n.event,
+  surv   = km_summary$surv,
+  lower  = km_summary$lower,
+  upper  = km_summary$upper
+)
+
+# Make gt table
+km_gt <- km_df %>%
+  gt() %>%
+  fmt_number(columns = c(surv, lower, upper), decimals = 3) %>%
+  tab_header(
+    title = "Kaplan–Meier Survival Estimates",
+    subtitle = "Survival probability over time"
+  ) %>%
+  cols_label(
+    time   = "Time",
+    n_risk = "At Risk",
+    n_event= "Events",
+    surv   = "Survival Prob.",
+    lower  = "Lower CI",
+    upper  = "Upper CI"
+  )
+
+km_gt
+```
+
+```{r}
+# save gt table to RTF or HTML and then embed in Word
+gtsave(km_gt, filename = "doc/overall_km_table.docx")
+```
+
+
+
+
+
+```{r}
+
+# Basic Kaplan-Meier plot
+ggsurvplot(
+  km_fit,
+  data=data,
+  conf.int = T,            # show number at risk
+  xlab = "Time of Death (months)", 
+  ylab = "Survival Probability",
+  palette = "Red",
+  legend = "none" 
+) 
+
+```
+
+
+
+
+
+
+# death after trt KM table
+```{r}
+# Survival object
+surv_obj <- Surv(time = data$timdea, event = data$status)
+
+# Fit survival curve
+km_fit <- survfit(surv_obj ~ 1, data = data)
+
+# Extract summary
+km_summary <- summary(km_fit)
+
+# Convert to data frame
+km_df <- data.frame(
+  time   = km_summary$time,
+  n_risk = km_summary$n.risk,
+  n_event= km_summary$n.event,
+  surv   = km_summary$surv,
+  lower  = km_summary$lower,
+  upper  = km_summary$upper
+)
+
+# Make gt table
+km_gt <- km_df %>%
+  gt() %>%
+  fmt_number(columns = c(surv, lower, upper), decimals = 3) %>%
+  tab_header(
+    title = "Kaplan–Meier Survival Estimates",
+    subtitle = "Survival probability over time"
+  ) %>%
+  cols_label(
+    time   = "Time",
+    n_risk = "At Risk",
+    n_event= "Events",
+    surv   = "Survival Prob.",
+    lower  = "Lower CI",
+    upper  = "Upper CI"
+  )
+
+km_gt
+```
+
+```{r}
+# save gt table to RTF or HTML and then embed in Word
+gtsave(km_gt, filename = "doc/meta_km_table.docx")
+```
+
+```{r}
+
+# Basic Kaplan-Meier plot
+ggsurvplot(
+  km_fit,
+  data=data,
+  conf.int = T,            # show number at risk
+  xlab = "Time of Death (months)", 
+  ylab = "Survival Probability",
+  palette = "Red",
+  legend = "none" 
+) 
+
+```
+
+
+
+
+
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+vars <- c("Lung", "Brain", "liver", "Bone", "opposite_breast", "Others")
+cl <- RColorBrewer::brewer.pal(12,"Paired")[seq(2,12,2)] # distinct contrasting colors
+
+# Combine KM datasets into one long data frame
+km_combined <- bind_rows(
+  lapply(vars, function(v) {
+    df <- km_list[[v]]
+    df$group <- v
+    df
+  })
+)
+
+km_combined$group <- factor(
+  km_combined$group,
+  levels = c("Lung", "Brain", "liver", "Bone", "opposite_breast", "Others"),
+  labels = c("Lung", "Brain", "Liver", "Bone", "Opposite Breast", "Others")
+)
+
+ggplot(km_combined, aes(x = time, y = surv, color = group)) +
+  geom_step(size = 1) +
+  scale_color_manual(values = cl) +  # assign colors
+  labs(
+    title = "Kaplan–Meier Survival Curves by Metastasis Site",
+    x = "Time of Death (months)",
+    y = "Survival Probability",
+    color = "Metastasis"               # legend title
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 14)
+  )
+```
+
+
+
+```{r}
+data %>% 
+  mutate(
+    all_neg = case_when(
+      ER == "Negative" & PR == "Negative" & her2 == "Negative" ~ 1,
+      TRUE ~ 0
+    ),
+    all_neg = factor(all_neg, labels = c("Positive", "Negative"))
+  ) %>% 
+  pull(all_neg) %>% 
+  table()
+```
+
+
+```{r}
+doc %>% 
+  print(target = "doc/all_table.docx")
+```
+
+
+
+
+
+
+
