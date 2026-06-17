@@ -263,7 +263,7 @@ tab1 <- data %>%
   bold_labels() %>%
   modify_header(label ~ "**Characteristic**") %>%
   modify_spanning_header(c(stat_1, stat_2) ~ "**MBC Type**") %>%
-  modify_caption("**Table 1.** Patient and tumour characteristics by MBC type")
+  modify_caption("Table 1. Patient characteristics and clinical subtype of patients diag nosed with de novo or metachronous metastatic breast cancer (MBC)")
 
 tab1
 
@@ -303,7 +303,7 @@ tab2 <- data %>%
   bold_labels() %>%
   modify_header(label ~ "**Disease Characteristic**") %>%
   modify_spanning_header(c(stat_1, stat_2) ~ "**MBC Type**") %>%
-  modify_caption("**Table 2.** Disease and metastasis characteristics by MBC type")
+  modify_caption("Table 2. Disease and metastasis characteristics by MBC type")
 
 tab2
 
@@ -347,7 +347,7 @@ tab3 <- data %>%
   bold_labels() %>%
   modify_header(label ~ "**Treatment**") %>%
   modify_spanning_header(c(stat_1, stat_2) ~ "**MBC Type**") %>%
-  modify_caption("**Table 3.** Treatment patterns by MBC type")
+  modify_caption("Table 3. Treatment patterns by MBC type")
 
 tab3
 
@@ -365,11 +365,8 @@ tab3
 data <- data %>%
   mutate(
     # Construct OS time: observed death time OR symptom-to-metastasis as proxy
-    os_time = case_when(
-      status == 1 & !is.na(timeofdeath) ~ timeofdeath,
-      status == 0 & !is.na(symptomtometastasis) ~ symptomtometastasis,
-      .default = NA_real_
-    )
+    os_time =   ifelse(status == 1, timdea, symptomtometastasis),
+    os_time = ifelse(os_time >24, 24, os_time)
   )
 
 # Helper: fit KM + unadjusted & adjusted Cox for one subset
@@ -488,7 +485,7 @@ tab5 <- tbl_regression(
   bold_labels() %>%
   modify_header(label ~ "**Group**") %>%
   modify_caption(
-    "**Table 5.** Hazard ratios by MBC type and prior disease stage in HR+ patients (sub-analysis)"
+    "Table 5.Hazard ratios by MBC type and prior disease stage"
   )
 
 tab5
@@ -548,24 +545,26 @@ if (length(km_panels) > 0)
 # =============================================================
 # EXPORT – All tables to Word documents
 # =============================================================
-dir.create("output_docs", showWarnings = FALSE)
+doc <- read_docx() %>%
+  body_add("Table 1", style = "heading 1") %>% 
+  body_add_flextable(tab1 %>% as_flex_table() %>% autofit()) %>% 
+  body_add("") %>% 
+  body_add("Table 2", style = "heading 1") %>% 
+  body_add_flextable(tab2 %>% as_flex_table() %>% autofit()) %>% 
+  body_add("") %>% 
+  body_add("Table 3", style = "heading 1") %>% 
+  body_add_flextable(tab3 %>% as_flex_table() %>% autofit()) %>% 
+  body_add("") %>% 
+  body_add("Table 4", style = "heading 1") %>% 
+  body_add_flextable(tab4_ft %>% autofit()) %>% 
+  body_add("") %>% 
+  body_add("Table 5", style = "heading 1") %>% 
+  body_add_flextable(tab5 %>% as_flex_table() %>% autofit())
 
-save_gts <- function(tbl_obj, fname) {
-  doc <- read_docx() %>%
-    body_add_flextable(tbl_obj %>% as_flex_table() %>% autofit())
-  print(doc, target = file.path("Doc", fname))
-  message("Saved → output_docs/", fname)
-}
 
-save_gts(tab1, "Table1_Patient_Characteristics.docx")
-save_gts(tab2, "Table2_Disease_Characteristics.docx")
-save_gts(tab3, "Table3_Treatment_Patterns.docx")
-save_gts(tab5, "Table5_SubAnalysis_PriorStage.docx")
+print(doc, target = file.path("Doc", "all_table.docx"))
 
-# Table 4 uses a custom flextable
-doc4 <- read_docx() %>% body_add_flextable(tab4_ft)
-print(doc4, target = "Doc/Table4_Survival_Cox.docx")
-message("Saved → output_docs/Table4_Survival_Cox.docx")
+
 
 # KM plots as PDF
 # ggsurvplot internally calls grid.newpage() which adds a blank first page
