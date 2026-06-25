@@ -19,6 +19,9 @@ library(flextable)
 library(officer)
 # library(cowplot) needed for plot_grid + ggplotGrob composition
 library(cowplot)
+library(broom)
+library(pacman)
+p_load(broom.helpers)
 # ----------------------------------------------------------
 # 0.  Load raw data
 # ----------------------------------------------------------
@@ -387,7 +390,7 @@ get_survival_stats <- function(df, subtype_label = "Overall") {
   # Adjusted Cox: age group + metastatic burden + any systemic treatment
   df_adj <- df %>% filter(!is.na(age_grp), !is.na(mburden), !is.na(Any_Systemic_Tx))
   cox_a  <- tryCatch(
-    coxph(Surv(os_time, status) ~ mbc_type + age_grp + mburden + Any_Systemic_Tx,
+    coxph(Surv(os_time, status) ~ mbc_type + age_grp + mburden + Residence + Education + grading + Any_Systemic_Tx,
           data = df_adj),
     error = function(e) NULL
   )
@@ -469,7 +472,7 @@ data_sub <- data %>%
   filter(!is.na(prior_tx_group))
 
 cox_sub <- coxph(
-  Surv(os_time, status) ~ prior_tx_group + age_grp + mburden,
+  Surv(os_time, status) ~ prior_tx_group + age_grp + mburden + Residence + Education + grading,
   data = data_sub
 )
 
@@ -562,8 +565,7 @@ doc <- read_docx() %>%
   body_add_flextable(tab5 %>% as_flex_table() %>% autofit())
 
 
-print(doc, target = file.path("Doc", "all_table.docx"))
-
+print(doc, target = file.path("Doc", paste0("all_table_", str_replace_all(Sys.time(), "[\\s.:\\-]", ""), ".docx")))
 
 
 # KM plots as PDF
