@@ -1,0 +1,420 @@
+---
+title: "Project 10"
+author: "Ibrahim All-Mamun"
+date: "2025-12-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+```{r}
+library(tidyverse)
+library(gt)
+library(gtsummary)
+
+library(haven)
+library(stringr)
+library(flextable)
+library(officer)
+library(summarytools)
+library(openxlsx)
+
+library(forcats)
+
+library(dplyr)
+library(survival)
+library(survminer)
+
+library(labelled)
+
+library(mice)
+library(jomo)
+
+select <- dplyr::select
+source("codes.R")
+```
+
+
+
+```{r}
+df <- read.xlsx("Data/data.xlsx", 1)
+names(df)
+```
+
+```{r}
+names(df) <- varNames
+```
+
+
+```{r}
+table(df$age)
+```
+
+
+# Data
+```{r}
+read.xlsx("Data/data.xlsx", 1) -> df
+
+names(df) <- varNames
+
+df <- df[sample(nrow(df), 270), ]
+
+
+# Convert characters to factors
+df <- df %>%
+  mutate(
+    age_group = case_when(
+      age %in% 18:25 ~ "18–25",
+      age %in% 26:35 ~ "26–35",
+      age >  35      ~ "35+",
+      TRUE           ~ NA_character_
+    ),
+    age_group = factor(age_group, levels = c("18–25", "26–35", "35+")),  # ordered levels
+    pain_severity_score = case_when(
+      pain_severity_score %in% 0:3 ~ "0–3",
+      pain_severity_score %in% 4:6 ~ "4–6",
+      pain_severity_score >  6     ~ "7-9",
+      TRUE           ~ NA_character_
+    ),
+    pain_severity_score = factor(pain_severity_score, levels = c("0–3", "4–6", "7-9"))  # ordered levels
+  ) %>%
+  mutate(across(where(is.character), as.factor))
+
+df %>%
+  set_variable_labels(
+    age = "Age",
+    age_group = "Age",
+    marital = "Marital status",
+    education = "Education level",
+    household_income = "Monthly household income",
+    residence = "Place of residence",
+    duration_living = "Duration living in Dhaka years",
+    duration_working = "Duration working construction",
+    primary_job = "Primary job task",
+    working_hr_day = "Working hours per day",
+    working_hr_week = "Working days per week",
+    workplace_toilet = "Workplace toilet availability",
+    workplace_water = "Workplace drinking water access",
+    age_menarche = "Age at menarche years",
+    menstrual_regularity = "Menstrual cycle regularity",
+    duration_menstrual = "Duration of menstrual period days",
+    missed_menstrual = "Missed menstrual period last 6 months",
+    absorbent_type = "Type of absorbent used",
+    afford_pads = "Afford sanitary pads",
+    pain_experience = "Menstrual pain experience",
+    pain_severity_score = "Menstrual pain severity score",
+    frequency_of_pain = "Frequency of menstrual pain",
+    reduced_work = "Missed or reduced work due to menstrual pain",
+    pain_urination = "Burning or pain during urination",
+    frequent_urination = "Frequent or urgent urination",
+    lower_abdominal_pain = "Lower abdominal pain or discomfort",
+    lower_back_pain = "Lower back or flank pain",
+    bloody_urine = "Cloudy dark or bloody urine",
+    vaginal_discharge = "Abnormal vaginal discharge",
+    vaginal_odor = "Foul smelling vaginal odor",
+    genital_itching = "Genital itching or irritation",
+    pain_intercourse = "Pain or discomfort during sexual intercourse",
+    reduced_fluid_intake = "Reduced fluid intake during work",
+    urination_frequency = "Frequency of urination during work",
+    urination_delay = "Delaying urination at work",
+    symptoms = "Sought medical care for urinary or reproductive symptoms",
+    reasons = "Reasons for not seeking care",
+    place_care = "Place of seeking care",
+    time_care = "Time taken to seek care",
+    satisfaction = "Satisfaction with healthcare services",
+    received_treatment = "Received medication or treatment"
+  ) -> df
+
+
+
+```
+# Helper: build one tbl_summary per dependent variable
+```{r}
+make_bivariate_tbl <- function(data, dep_var, ind_var) {
+  data %>%
+    select(
+      all_of(ind_var),
+      all_of(dep_var)
+    ) %>%
+    tbl_summary(
+      by = all_of(dep_var),
+      statistic = list(
+        all_continuous()  ~ "{mean} ± {sd}",
+        all_categorical() ~ "{n} ({p}%)"
+      ),
+      digits  = all_continuous() ~ 1,
+      missing = "no"
+    ) %>%
+    add_p(
+      test = list(
+        all_continuous()  ~ "t.test",
+        all_categorical() ~ "chisq.test"
+      ),
+      pvalue_fun = ~ style_pvalue(.x, digits = 3)
+    ) %>%
+    bold_p(t = 0.05) %>%
+    modify_spanning_header(
+      all_stat_cols() ~ paste0("**", var_label(df[,dep_var]), "**")
+    ) %>%
+    modify_header(label ~ "**Variable**") %>% 
+    suppressMessages
+}
+
+
+```
+
+# Descriptive Tables
+```{r}
+tbl <- df %>%
+  select(
+    age_group,
+    marital,
+    education,
+    household_income,
+    residence,
+    duration_living,
+    duration_working
+  ) %>%
+  tbl_summary(
+    statistic = list(
+      all_continuous()  ~ "{mean} ± {sd}",
+      all_categorical() ~ "{n} ({p}%)"
+    ),
+    digits  = all_continuous() ~ 1,
+    missing = "no"
+  ) %>%
+  suppressMessages %>% 
+  as_flex_table
+```
+
+
+```{r}
+doc <- read_docx() 
+
+doc <- doc %>% 
+  body_add_par(value = "Job and Working Hour Related") %>%
+  body_add_flextable(value = tbl) %>% 
+  body_add_par(value = "")
+```
+
+
+## Job and Working Hour Related
+```{r}
+ind_var <- c("primary_job",
+             "working_hr_day",
+             "working_hr_week",
+             "residence",
+             "age_group")
+
+tbl1 <- make_bivariate_tbl(df, "lower_abdominal_pain", ind_var)
+tbl2 <- make_bivariate_tbl(df, "lower_back_pain", ind_var)
+tbl3 <- make_bivariate_tbl(df, "pain_urination", ind_var)
+
+
+combined_tbl <- tbl_stack(
+  list(tbl1, tbl2, tbl3),
+  group_header = c(
+    "Lower Abdominal Pain or Discomfort",
+    "Lower Back or Flank Pain",
+    "Burning or Pain During Urination"
+  ), quiet = TRUE
+) %>% 
+  as_flex_table()
+
+combined_tbl
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Job and Working Hour Related") %>%
+  body_add_flextable(value = combined_tbl) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+## Odor and Itching Related
+```{r}
+ind_var <- c("workplace_toilet",
+             "absorbent_type",
+             "afford_pads",
+             "residence")
+
+tbl1 <- make_bivariate_tbl(df, "bloody_urine", ind_var)
+tbl2 <- make_bivariate_tbl(df, "vaginal_discharge", ind_var)
+tbl3 <- make_bivariate_tbl(df, "vaginal_odor", ind_var)
+tbl4 <- make_bivariate_tbl(df, "genital_itching", ind_var)
+
+
+combined_tbl <- tbl_stack(
+  list(tbl1, tbl2, tbl3, tbl4),
+  group_header = c(
+    "Cloudy dark or bloody urine",
+    "Abnormal vaginal discharge",
+    "Foul smelling vaginal odor",
+    "Genital itching or irritation"
+  ),
+  quiet = TRUE
+) %>%
+  as_flex_table()
+
+combined_tbl
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Odor and Itching Related") %>%
+  body_add_flextable(value = combined_tbl) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+
+## Menstrual Related
+```{r}
+ind_var <- c(
+  "primary_job",
+  "working_hr_day",
+  "residence",
+  "absorbent_type",
+  "workplace_toilet",
+  "workplace_water",
+  "age_group"
+)
+
+tbl1 <- make_bivariate_tbl(df, "menstrual_regularity", ind_var)
+tbl2 <- make_bivariate_tbl(df, "pain_severity_score", ind_var)
+tbl3 <- make_bivariate_tbl(df, "pain_experience", ind_var)
+
+tbl4 <- make_bivariate_tbl(df, "frequency_of_pain", ind_var)
+
+tbl5 <- make_bivariate_tbl(df, "pain_urination", ind_var)
+tbl6 <- make_bivariate_tbl(df, "frequent_urination", ind_var)
+
+tbl4 <- tbl4 %>% as_flex_table
+
+combined_tbl1 <- tbl_stack(
+  list(tbl1, tbl2, tbl3),
+  group_header = c(
+    "Menstrual cycle regularity",
+    "Menstrual pain severity score",
+    "Menstrual pain experience"
+  ),
+  quiet = TRUE
+) %>%
+  as_flex_table()
+
+
+
+combined_tbl2 <- tbl_stack(
+  list(tbl5, tbl6),
+  group_header = c(
+    "Burning or pain during urination",
+    "Frequent or urgent urination"
+  ),
+  quiet = TRUE
+) %>%
+  as_flex_table()
+
+combined_tbl1
+combined_tbl2
+```
+```{r}
+table(df$pain_severity_score)
+
+
+with(df, 
+     table(menstrual_regularity) %>% print,
+     )
+with(df, 
+     table(pain_severity_score) %>% print
+     )
+with(df, 
+     table(pain_experience) %>% print
+     )
+
+
+with(df, 
+     table(frequency_of_pain) %>% print
+     )
+
+
+with(df, 
+     table(pain_urination) %>% print
+     )
+with(df, 
+     table(frequent_urination) %>% print
+     )
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Menstrual Related") %>%
+  body_add_flextable(value = combined_tbl1) %>% 
+  body_add_par(value = "") %>% 
+  body_add_flextable(value = tbl4) %>% 
+  body_add_par(value = "") %>% 
+  body_add_flextable(value = combined_tbl2) %>% 
+  body_add_par(value = "")
+```
+
+
+
+reduced_work = "Missed or reduced work due to menstrual pain"
+
+pain_severity_score = "Menstrual pain severity score"
+pain_experience = "Menstrual pain experience"
+frequency_of_pain = "Frequency of menstrual pain"
+pain_urination = "Burning or pain during urination"
+pain_intercourse = "Pain or discomfort during sexual intercourse"
+
+## Job and Working Hour Related
+```{r}
+ind_var <- c("pain_severity_score",
+             "pain_experience",
+             "frequency_of_pain",
+             "pain_urination",
+             "pain_intercourse")
+
+tbl1 <- make_bivariate_tbl(df, "reduced_work", ind_var)
+
+
+
+
+tbl1 <- tbl1 %>% as_flex_table
+```
+
+
+```{r}
+doc <- doc %>% 
+  body_add_par(value = "Missed or reduced work due to menstrual pain") %>%
+  body_add_flextable(value = tbl1) %>% 
+  body_add_par(value = "")
+```
+
+
+
+
+
+## Export Document
+```{r}
+doc %>% 
+  print(target = "doc/all_table.docx")
+```
+
+
+
