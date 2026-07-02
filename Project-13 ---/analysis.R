@@ -239,6 +239,8 @@ make_bivariate_tbl <- function(data, dep_var, ind_vars) {
 }
 
 
+
+
 # ── TABLE 1: Socio-demographic and clinical characteristics (n = 206) ────────
 tbl1_age <- df %>%
   select(age) %>%
@@ -378,8 +380,13 @@ tbl3B_ft <- flextable(causesB) %>%
   autofit()
 
 
+
 # ── TABLE 4: Association between factors and delay in seeking care (n=206) ───
-tbl4 <- df %>%
+
+df_mod <- df %>% 
+  filter(delay_trmnt=="No")
+
+tbl4 <- df_mod %>%
   select(residence, education_bin, income_bin, occupation_bin, slt_cat,
          stage_cat, first_doctor3, delayed_care) %>%
   tbl_summary(
@@ -401,8 +408,8 @@ tbl4 <- df %>%
   bold_p(t = 0.05) %>%
   modify_header(
     label  ~ "**Variable**",
-    stat_1 ~ "**Delay n (%)**",
-    stat_2 ~ "**No delay n (%)**"
+    stat_2 ~ "**Delay**",
+    stat_1 ~ "**No delay**"
   ) %>%
   bold_labels() %>%
   suppressMessages()
@@ -415,11 +422,13 @@ tbl4 <- df %>%
 # variable exists and add it back into the formulas below if so.
 
 # Age: template shows a single "Grouped" row -> median-split binary variable
-df <- df %>%
+df_mod <- df_mod %>%
   mutate(
     age_bin = factor(if_else(age >= median(age, na.rm = TRUE), "\u2265 median age", "< median age"),
                      levels = c("< median age", "\u2265 median age"))
   )
+
+
 
 reg_vars <- c("stage_cat", "age_group", "residence", "education_bin", "income_bin",
               "occupation_bin", "slt_cat", "first_doctor_bin") #, "misinterp")
@@ -437,7 +446,7 @@ reg_labels <- list(
 )
 
 # Univariable (crude) odds ratios
-tbl5_cor <- df %>%
+tbl5_cor <- df_mod %>%
   select(all_of(reg_vars), delayed_care_bin) %>%
   tbl_uvregression(
     method = glm,
@@ -454,7 +463,7 @@ tbl5_cor <- df %>%
 m_delay <- glm(
   delayed_care_bin ~ stage_cat + age_group + residence + education_bin +
     income_bin + occupation_bin + slt_cat + first_doctor_bin, # + misinterp,
-  data   = df,
+  data   = df_mod,
   family = binomial(link = "logit")
 )
 
@@ -495,7 +504,7 @@ doc <- doc %>%
   add_section("Table 2 (cont.): First symptom noticed, first provider consulted, time to seek care", tbl2_gt_ft) %>%
   add_section("Table 3: Causes of delay in seeking medical care and treatment initiation \u2013 A. Delay in seeking medical care", tbl3A_ft) %>%
   add_section("Table 3 (cont.): B. Delay in treatment initiation", tbl3B_ft) %>%
-  add_section("Table 4: Association between socio-demographic/clinical factors and delay in seeking medical care (n = 206)", to_ft(tbl4)) %>%
+  add_section("Table 4: Association between socio-demographic/clinical factors and delay in seeking medical care (n = 178)", to_ft(tbl4)) %>%
   add_section("Table 5: Binary logistic regression analysis of factors associated with delay in seeking medical care", to_ft(tbl5))
 
 out_path <- "doc/replicated_tables_breast_cancer.docx"
