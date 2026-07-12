@@ -548,7 +548,7 @@ plotA <- df_mod %>%
   geom_text(aes(label = paste0(n, "\n(", percent(pct, accuracy = 1), ")")),
             position = position_stack(vjust = 0.5), size = 3, color = "white") +
   scale_y_continuous(labels = percent_format()) +
-  scale_fill_manual(values = c("No" = "#4C72B0", "Yes" = "#55A868"),
+  scale_fill_manual(values = c("No" = "#55A868", "Yes" = "#4C72B0"),
                     name = "Delay in seeking care") +
   labs(title = "",
        x = "Cancer stage at diagnosis", y = "Proportion of patients") +
