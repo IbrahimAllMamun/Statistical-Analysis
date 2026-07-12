@@ -28,11 +28,12 @@ library(survminer)
 
 
 ```{r}
+data2 <- read_sav("data/Metastatic breast cancer study_new dataset.sav")
 names(data)
 ```
 
 ```{r}
-read_sav("Metastatic breast cancer study-org.sav") %>% 
+read_sav("data/Metastatic breast cancer study_new dataset.sav") %>% 
   mutate(
     age_grp = case_when(
       age < 35 ~ 1, 
@@ -61,21 +62,21 @@ read_sav("Metastatic breast cancer study-org.sav") %>%
     ER = ER %>% labelled::unlabelled(),
     ER = case_when(
       ER == "1" ~ 1,
-      ER == "2" ~ 2,
-      .default = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+      ER == "2" ~ 0,
+      .default = NA
+    ) %>% factor(labels = c("Negative", "Positive")),
     PR = PR %>% labelled::unlabelled(),
     PR = case_when(
       PR == "1" ~ 1,
-      PR == "2" ~ 2,
-      .default = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+      PR == "2" ~ 0,
+      .default = NA
+    ) %>% factor(labels = c("Negative", "Positive")),
     her2 = her2 %>% labelled::unlabelled(),
     her2 = case_when(
       her2 == "1" ~ 1,
-      her2 == "2" ~ 2,
-      .default = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+      her2 == "2" ~ 0,
+      .default = NA
+    ) %>% factor(labels = c("Negative", "Positive")),
     denovometastasis = denovometastasis %>% labelled::unlabelled(),
     recume = recume %>% labelled::unlabelled(),
     recume = case_when(
@@ -84,7 +85,10 @@ read_sav("Metastatic breast cancer study-org.sav") %>%
     ) %>% factor(labels = c("No", "Yes")),
     
     # Skip & CS
-    skip = skip %>% factor(label=c("Non Adherent", "Adherent")),
+    skip = case_when(
+      skip == "1" ~ 1,
+      .default = 0
+    ) %>% factor(labels = c("Non Adherent", "Adherent")),
     cs = cs %>% as_factor(),
     
     # Delay
@@ -92,14 +96,14 @@ read_sav("Metastatic breast cancer study-org.sav") %>%
     delayrx = delayrx %>% labelled::unlabelled(),
     delayrx = case_when(
       delayrx == "1" ~ 1,
-      delayrx == "2" ~ 2,
-      .default = 3
-    ) %>% factor(labels = c("Yes", "No", "Unknown")),
+      delayrx == "2" ~ 0,
+      .default = NA
+    ) %>% factor(labels = c("No", "Yes")),
     symptomaticresponse = symptomaticresponse %>% labelled::unlabelled(),
     symptomaticresponse = case_when(
       symptomaticresponse == "1" ~ 1,
-      .default = 2
-    ) %>% factor(labels = c("Adequate", "Inadequate")),
+      .default = 0
+    ) %>% factor(labels = c("Inadequate", "Adequate")),
     
     # Radiological Response
     radiologivcalresponse = radiologivcalresponse %>% labelled::unlabelled(),
@@ -108,22 +112,21 @@ read_sav("Metastatic breast cancer study-org.sav") %>%
       radiologivcalresponse == "2" ~ 2,
       radiologivcalresponse == "3" ~ 3,
       radiologivcalresponse == "4" ~ 4,
-      .default = 5
-    ) %>% factor(labels = c("Stable", "progressive disease", "partial response", "complete response", "Unknown")),
+      .default = NA
+    ) %>% factor(labels = c("Stable", "progressive disease", "partial response", "complete response")),
     grading = grading %>% labelled::unlabelled(),
     grading = case_when(
       grading == "1" ~ 1,
       grading == "2" ~ 2,
       grading == "3" ~ 3,
-      .default = 4
-    ) %>% factor(labels = c("Grade 1", "Grade 2", "Grade 3", "Unknown")),
+      .default = NA
+    ) %>% factor(labels = c("Grade 1", "Grade 2", "Grade 3")),
     surgery = surgery %>% labelled::unlabelled(),
     surgery = case_when(
       surgery == "1" ~ 1,
       surgery == "2" ~ 2,
-      surgery == "3" ~ 3,
-      .default = 4
-    ) %>% factor(labels = c("Mastectomy", "Biopsy", "None")),
+      .default = 3
+    ) %>% factor(labels = c("Biopsy", "Mastectomy", "None")),
     
     # Recieved Treatment
     rxreceived = rxreceived %>% labelled::unlabelled(),
