@@ -124,9 +124,9 @@ read_sav("data/Metastatic breast cancer study_new dataset.sav") %>%
     surgery = surgery %>% labelled::unlabelled(),
     surgery = case_when(
       surgery == "1" ~ 1,
-      surgery == "2" ~ 2,
+      surgery == "3" ~ 2,
       .default = 3
-    ) %>% factor(labels = c("Biopsy", "Mastectomy", "None")),
+    ) %>% factor(labels = c("Mastectomy", "Biopsy", "None")),
     
     # Recieved Treatment
     rxreceived = rxreceived %>% labelled::unlabelled(),
