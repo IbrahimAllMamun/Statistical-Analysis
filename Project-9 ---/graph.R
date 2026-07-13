@@ -267,20 +267,20 @@ term_labels <- c(
   "age51-60"          = "Age 51–60 (vs ≤40)",
   "age60+"            = "Age >60 (vs ≤40)",
   "SexFemale"         = "Female (vs Male)",
-  "deptClinical"      = "Clinical dept. (vs Non-clinical)",
+  "FamilyYes"         = "Family history",
   "dgraduation6-10"   = "Graduated 6–10 yrs (vs <6)",
   "dgraduation>10"    = "Graduated >10 yrs (vs <6)",
-  "FamilyYes"         = "Family history of cancer",
-  "dx_self_cancerYes" = "Ever diagnosed cancer",
-  "know_ca_scrnYes"   = "Knows cancer screening",
-  "att_ca_scrnYes"    = "Attended cancer screening"
+  "dx_self_cancerYes" = "Previous cancer",
+  "know_ca_scrnYes"   = "Awareness of screening",
+  "att_ca_scrnYes"    = "Percieved Usefullness",
+  "deptClinical"      = "Clinical dept. (vs Non-clinical)"
 )
 
 
 
 
 # Terms to drop from this figure (age + cancer-screening covariates)
-drop_terms <- c("age41-50", "age51-60", "age60+", "know_ca_scrnYes", "att_ca_scrnYes")
+drop_terms <- c("age41-50", "age51-60", "age60+")
 
 pro_col_coef <- pro_col_coef %>%
   filter(metric == "Practice",

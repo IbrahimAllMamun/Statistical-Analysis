@@ -1,0 +1,620 @@
+---
+title: "Litigation Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    self_contained: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(flexdashboard)
+library(dplyr)
+library(DT)
+library(reactable)
+library(htmltools)
+library(jsonlite)
+
+require(tidyverse)
+require(readxl)
+require(lubridate)
+require(openxlsx)
+require(glue)
+
+library(DBI)
+library(odbc)
+
+data_list <- readRDS("data.RDS")
+
+data <- data_list$all_litigation
+history <- data_list$history
+
+# set.seed(121)
+# acs <- data %>% pull(AccountNumber) %>% unique()
+# acs <- acs[sample(seq_along(acs), 100)]
+# data <- data %>% filter(AccountNumber %in% acs)
+
+# 146603
+# or_fgvem_07
+
+data <- data %>%
+  mutate(name_cif = paste0(ClientName, ' <span class="cif-badge">', CIF, '</span>'), .before = 1) %>%
+  select(-ClientName)
+
+
+
+
+# ============================================================================
+# GLOBAL HELPER FUNCTIONS -- shared across NI / ARA / ARAE tabs
+# ============================================================================
+
+format_lakh_crore <- function(x) {
+  if (length(x) == 0 || is.na(x)) return(NA_character_)
+  neg <- x < 0
+  x <- round(abs(x))
+  x_str <- format(x, scientific = FALSE)
+  n <- nchar(x_str)
+
+  if (n <= 3) {
+    result <- x_str
+  } else {
+    last3 <- substr(x_str, n - 2, n)
+    rest  <- substr(x_str, 1, n - 3)
+    rest_rev <- paste(rev(strsplit(rest, "")[[1]]), collapse = "")
+    groups <- regmatches(rest_rev, gregexpr(".{1,2}", rest_rev))[[1]]
+    rest_comma <- paste(
+      rev(sapply(groups, function(g) paste(rev(strsplit(g, "")[[1]]), collapse = ""))),
+      collapse = ","
+    )
+    result <- paste0(rest_comma, ",", last3)
+  }
+  if (neg) result <- paste0("-", result)
+  result
+}
+
+# ---- one label/value block inside the case-details expander ----
+info_field <- function(label, value, accent = NULL) {
+  display_value <- if (length(value) == 0 || is.na(value)) {
+    "\u2014"
+  } else if (inherits(value, "Date") || inherits(value, "POSIXct")) {
+    format(value, "%b %d, %Y")
+  } else if (is.character(value) && trimws(value) == "") {
+    "\u2014"
+  } else {
+    as.character(value)
+  }
+
+  field_class <- if (!is.null(accent)) paste("case-detail-field", accent) else "case-detail-field"
+
+  htmltools::div(
+    class = field_class,
+    htmltools::div(label, class = "case-detail-label"),
+    htmltools::div(display_value, class = "case-detail-value")
+  )
+}
+
+# ---- status text -> colored pill class ----
+status_pill_class <- function(status) {
+  s <- tolower(status)
+  cls <- dplyr::case_when(
+    grepl("withdraw", s)  ~ "status-withdrawn",
+    grepl("warrant", s)   ~ "status-warrant",
+    grepl("summon", s)    ~ "status-summon",
+    grepl("step", s)      ~ "status-steps",
+    grepl("paper", s)     ~ "status-paper",
+    TRUE                  ~ "status-default"
+  )
+  cls
+}
+
+
+# ---- aging number -> colored pill class ----
+aging_pill_class <- function(days) {
+  if (is.na(days)) return(NA_character_)
+  if (days < 30) "aging-low" else if (days < 90) "aging-mid" else "aging-high"
+}
+
+# ---- formats one field value for display (mirrors old info_field logic) ----
+fmt_val <- function(value) {
+  if (length(value) == 0 || is.na(value)) return("\u2014")
+  if (inherits(value, "Date") || inherits(value, "POSIXct")) return(format(value, "%b %d, %Y"))
+  if (is.character(value) && trimws(value) == "") return("\u2014")
+  as.character(value)
+}
+
+# ---- formats a money value (lakh/crore) with dash fallback ----
+fmt_money <- function(x) {
+  v <- format_lakh_crore(x)
+  if (length(v) == 0 || is.na(v)) "\u2014" else v
+}
+
+# ============================================================================
+# LAZY CASE-DETAILS DATA
+# Instead of pre-rendering an HTML panel (and a nested reactable) for every one
+# of ~25k cases -- which makes the self-contained file enormous and blows up
+# pandoc -- we serialise each case's detail values + hearing history ONCE as
+# compact JSON. The panel is then built on-demand in the browser (see the
+# renderDetails() JS) only when a row is actually expanded.
+# ============================================================================
+build_details_data <- function(data_all, history_all) {
+  # only need history for cases actually present in the data
+  history_all <- history_all %>% filter(CaseID %in% unique(data_all$CaseID))
+
+  # one row per case for the detail cards
+  case_rows <- data_all %>% distinct(CaseID, .keep_all = TRUE)
+
+  details_by_case <- lapply(split(case_rows, case_rows$CaseID), function(r) {
+    active <- !is.na(r$LitigationStatus) && r$LitigationStatus == "Active"
+    list(
+      # Case Info values (labels live in JS, in this exact order)
+      ci = c(
+        fmt_val(r$`Nature of Suit`),
+        fmt_money(r$`Suit Value`),
+        fmt_val(r$`Suit Filing Date`),
+        fmt_val(r$`Law Firm`),
+        fmt_val(r$`Court No`),
+        fmt_val(r$`Next Hearing Date`),
+        fmt_val(r$`Cheque Number`),
+        fmt_money(r$Litigation_Receivable),
+        fmt_val(r$LitigationStatus)
+      ),
+      acc = if (active) "card-active" else "card-inactive",
+      # Account Info values
+      ai = c(
+        fmt_val(r$RMName),
+        fmt_money(r$URPA),
+        fmt_money(r$Overdue_Amount),
+        fmt_money(r$LPI),
+        fmt_money(r$NetExciseDutyTillLastYear),
+        fmt_money(r$NetExciseDutyTillCurrentYear)
+      )
+    )
+  })
+
+  hist2 <- history_all %>%
+    arrange(CaseID, desc(hearing_date)) %>%
+    group_by(CaseID) %>%
+    mutate(
+      next_hearing = lag(hearing_date),
+      aging = round(time_length(interval(hearing_date, next_hearing), "day"))
+    ) %>%
+    ungroup() %>%
+    mutate(
+      d  = format(hearing_date, "%d-%b-%Y"),
+      sc = status_pill_class(case_status),
+      ac = vapply(aging, aging_pill_class, character(1))
+    )
+
+  history_by_case <- lapply(split(hist2, hist2$CaseID), function(h) {
+    lapply(seq_len(nrow(h)), function(i) list(
+      d  = h$d[i],
+      s  = h$case_status[i],
+      sc = h$sc[i],
+      a  = h$aging[i],
+      ac = h$ac[i]
+    ))
+  })
+
+  list(
+    details = jsonlite::toJSON(details_by_case, auto_unbox = TRUE, na = "string"),
+    history = jsonlite::toJSON(history_by_case, auto_unbox = TRUE, na = "null")
+  )
+}
+
+# ---- builds the filter panel (branch dropdown, CIF search, status checkboxes) ----
+# suffix must be unique per tab (e.g. "ni", "ara", "arae") to avoid id/JS collisions
+render_filter_panel <- function(data_tab, table_id, suffix) {
+  cif_lookup <- data_tab %>% distinct(Branch, LitigationStatus, CIF)
+
+  branch_select_id   <- paste0("branch-select-", suffix)
+  cif_input_id       <- paste0("cif-input-", suffix)
+  cif_datalist_id    <- paste0("customer-options-", suffix)
+  status_group_id    <- paste0("litigation-status-filters-", suffix)
+  status_cb_class    <- paste0("litigation-status-cb-", suffix)
+  update_cif_fn      <- paste0("updateCifOptions_", suffix)
+  update_status_fn   <- paste0("updateLitigationStatusFilter_", suffix)
+  clear_all_fn       <- paste0("clearAllFilters_", suffix)
+  cif_lookup_var     <- paste0("cifLookup_", suffix)
+
+  htmltools::tagList(
+    htmltools::tags$script(htmltools::HTML(glue::glue("
+      var {cif_lookup_var} = {jsonlite::toJSON(cif_lookup, dataframe = 'rows')};
+
+      function {update_cif_fn}() {{
+        var branch = document.getElementById('{branch_select_id}').value;
+        var checked = Array.from(document.querySelectorAll('.{status_cb_class}'))
+          .filter(function(b) {{ return b.checked; }})
+          .map(function(b) {{ return b.value; }});
+        var allChecked = checked.length === document.querySelectorAll('.{status_cb_class}').length;
+
+        var matches = {cif_lookup_var}.filter(function(row) {{
+          var branchOk = (branch === '' || row.Branch === branch);
+          var statusOk = (allChecked || checked.includes(row.LitigationStatus));
+          return branchOk && statusOk;
+        }});
+
+        var uniqueCifs = [...new Set(matches.map(function(r) {{ return r.CIF; }}))].sort();
+        var datalist = document.getElementById('{cif_datalist_id}');
+        datalist.innerHTML = '';
+        uniqueCifs.forEach(function(cif) {{
+          var opt = document.createElement('option');
+          opt.value = cif;
+          datalist.appendChild(opt);
+        }});
+      }}
+
+      function {update_status_fn}() {{
+        var boxes = document.querySelectorAll('.{status_cb_class}');
+        var allChecked = true;
+        var selected = [];
+        boxes.forEach(function(b) {{
+          if (b.checked) selected.push(b.value);
+          else allChecked = false;
+        }});
+        Reactable.setFilter('{table_id}', 'LitigationStatus', allChecked ? undefined : selected);
+        {update_cif_fn}();
+      }}
+
+      
+      function {clear_all_fn}() {{
+        document.getElementById('{branch_select_id}').value = '';
+        document.getElementById('{cif_input_id}').value = '';
+        document.querySelectorAll('.{status_cb_class}').forEach(function(b) {{ b.checked = true; }});
+
+        Reactable.setFilter('{table_id}', 'Branch', undefined);
+        Reactable.setFilter('{table_id}', 'CIF', undefined);
+        Reactable.setFilter('{table_id}', 'LitigationStatus', undefined);
+
+        {update_cif_fn}();
+      }}
+    "))),
+
+    htmltools::tags$div(
+      class = "filter-panel",
+
+      htmltools::tags$div(
+        class = "filter-group",
+        htmltools::tags$label("Branch", class = "filter-label"),
+        htmltools::tags$select(
+          id = branch_select_id,
+          class = "filter-select",
+          onchange = glue::glue("Reactable.setFilter('{table_id}', 'Branch', event.target.value); {update_cif_fn}();"),
+          htmltools::tags$option(value = "", "(All)"),
+          lapply(sort(unique(data_tab$Branch)), htmltools::tags$option)
+        )
+      ),
+
+      htmltools::tags$div(
+        class = "filter-group",
+        htmltools::tags$label("Customer Number", class = "filter-label"),
+        htmltools::tags$input(
+          id = cif_input_id,
+          type = "text",
+          class = "filter-search",
+          list = cif_datalist_id,
+          oninput = glue::glue("Reactable.setFilter('{table_id}', 'CIF', event.target.value === '' ? undefined : event.target.value)"),
+          placeholder = "Search Customer..."
+        ),
+        htmltools::tags$datalist(
+          id = cif_datalist_id,
+          lapply(sort(unique(data_tab$CIF)), function(acc) htmltools::tags$option(value = acc))
+        )
+      ),
+
+      htmltools::tags$div(
+        class = "filter-group",
+        htmltools::tags$label("Litigation Status", class = "filter-label"),
+        htmltools::tags$div(
+          class = "checkbox-list",
+          id = status_group_id,
+          lapply(sort(unique(data_tab$LitigationStatus)), function(status) {
+            htmltools::tags$label(
+              htmltools::tags$input(
+                type = "checkbox",
+                value = status,
+                class = status_cb_class,
+                onchange = paste0(update_status_fn, "()"),
+                checked = "checked"
+              ),
+              status
+            )
+          })
+        ),
+        htmltools::tags$div(
+          class = "filter-links",
+          htmltools::tags$a("Clear all", onclick = paste0(clear_all_fn, "()"))
+        )
+      )
+    )
+  )
+}
+
+# ---- builds the grouped reactable case table ----
+render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
+  reactable(
+    data_tab %>% select(all_of(c(
+      "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF"
+    ))),
+    elementId = table_id,
+    theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
+    groupBy = c("name_cif", "AccountNumber"),
+    columns = list(
+      name_cif = colDef(
+        minWidth = 320,
+        name = "Name / CIF",
+        aggregate = "unique",
+        html = TRUE,
+        grouped = JS("function(cellInfo) { return cellInfo.value }")
+      ),
+      AccountNumber = colDef(
+        maxWidth = 250,
+        name = "Account Number",
+        aggregate = JS("function(values, rows) {
+          let n = new Set(values).size;
+          let s = n === 1 ? '' : 's';
+          return n + ' Account' + s;
+        }"),
+        grouped = JS("function(cellInfo) { return cellInfo.value }")
+      ),
+      CaseID = colDef(
+        maxWidth = 200,
+        name = "Case ID",
+        html = TRUE,  # required so the details JS return renders as HTML, not text
+        aggregate = JS("function(values, rows) {
+          let n = new Set(values).size;
+          let s = n === 1 ? '' : 's';
+          return n + ' Case' + s;
+        }"),
+        details = JS("function(rowInfo) { return renderCaseDetails(String(rowInfo.row['CaseID'])); }")
+      ),
+      Branch = colDef(maxWidth = 200, aggregate = JS("function(values, rows) { return values[0] }")),
+      LitigationStatus = colDef(
+        maxWidth = 150,
+        name = "Litigation Status",
+        aggregate = JS("function(values, rows) {
+          let activeCount = values.filter(function(v) { return v === 'Active'; }).length;
+          return activeCount + ' Active';
+        }"),
+        cell = function(value) {
+          if (is.null(value) || is.na(value)) return("\u2014")
+          cls <- if (value == "Active") "status-active" else "status-inactive"
+          htmltools::span(value, class = paste("status-pill", cls))
+        },
+        filterMethod = JS("
+          function(rows, columnId, filterValue) {
+            if (!filterValue || filterValue.length === 0) return rows;
+            return rows.filter(function(row) {
+              return filterValue.includes(row.values[columnId]);
+            });
+          }
+        ")
+      ),
+      CIF = colDef(show = FALSE)
+    ),
+    rowStyle = JS("
+      function(rowInfo) {
+        if (!rowInfo) return {};
+        if (rowInfo.level === 0) return { backgroundColor: '#FFFFFF', fontWeight: '400' };
+        if (rowInfo.level === 1) return { backgroundColor: '#F9F9F9', fontWeight: '400' };
+        return { backgroundColor: '#F3F3F3' };
+      }
+    "),
+    bordered = TRUE,
+    defaultPageSize = 50,
+    showPageSizeOptions = TRUE,
+    pageSizeOptions = c(25, 50, 100),
+    paginationType = "jump"
+  )
+}
+
+# Build the lazy detail JSON once, from the full dataset, for all tabs.
+details_data <- build_details_data(data, history)
+
+# Combine + gzip-compress + base64 so the (history-heavy) payload stays small
+# enough for a single self-contained file. Inflated in the browser on load.
+payload_json <- paste0('{"details":', details_data$details,
+                       ',"history":', details_data$history, '}')
+payload_b64  <- jsonlite::base64_enc(
+  memCompress(charToRaw(enc2utf8(payload_json)), type = "gzip")
+)
+# base64_enc wraps lines; strip newlines so it's a valid single JS string literal
+payload_b64  <- gsub("[\r\n]", "", payload_b64)
+```
+
+```{r load-css, results='asis'}
+htmltools::tags$style(htmltools::HTML(paste(readLines("style.css"), collapse = "\n")))
+```
+
+```{r lazy-details-js, results='asis'}
+# Embed the per-case detail data ONCE, plus the JS that renders a panel
+# on-demand when a row is expanded. This keeps the file small (no pre-rendered
+# HTML for 25k cases) while producing the same panel the R version did.
+htmltools::tagList(
+  htmltools::tags$script(htmltools::HTML(paste0(
+    "window.__LIT_PAYLOAD_B64 = \"", payload_b64, "\";"
+  ))),
+  htmltools::tags$script(htmltools::HTML("
+    (function () {
+      // ---- inflate the embedded (gzip + base64) detail payload once ----
+      window.detailsByCase = {};
+      window.historyByCase = {};
+      window.__litReady = false;
+      window.__litError = false;
+      (async function () {
+        try {
+          var b64 = window.__LIT_PAYLOAD_B64 || '';
+          var bin = atob(b64);
+          var bytes = new Uint8Array(bin.length);
+          for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          // R's memCompress(type='gzip') emits a zlib (RFC 1950) stream,
+          // which the Compression Streams API calls 'deflate' (not 'gzip').
+          var ds = new DecompressionStream('deflate');
+          var stream = new Blob([bytes]).stream().pipeThrough(ds);
+          var buf = await new Response(stream).arrayBuffer();
+          var obj = JSON.parse(new TextDecoder('utf-8').decode(buf));
+          window.detailsByCase = obj.details || {};
+          window.historyByCase = obj.history || {};
+          window.__litReady = true;
+          window.__LIT_PAYLOAD_B64 = null; // release the base64 string from memory
+        } catch (e) {
+          console.error('Litigation dashboard: failed to load detail payload.', e);
+          window.__litError = true;
+        }
+      })();
+
+      var CI_LABELS = ['Nature of Suit','Suit Value','Suit Filing Date','Law Firm',
+        'Court No','Next Hearing Date','Cheque Number','Litigation Receivable','Active Status'];
+      var AI_LABELS = ['RM Name','URPA','Overdue Amount','LPI',
+        'Net Excise Duty (Last Year)','Net Excise Duty (Current Year)'];
+
+      function esc(s) {
+        return String(s == null ? '—' : s)
+          .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      function field(label, value, accent) {
+        var cls = 'case-detail-field' + (accent ? ' ' + accent : '');
+        return '<div class=\"' + cls + '\">' +
+                 '<div class=\"case-detail-label\">' + esc(label) + '</div>' +
+                 '<div class=\"case-detail-value\">' + esc(value) + '</div>' +
+               '</div>';
+      }
+
+      function section(title, inner) {
+        return '<div class=\"case-detail-section\">' +
+                 '<div class=\"case-detail-section-title\">' + esc(title) + '</div>' +
+                 '<div class=\"case-detail-grid\">' + inner + '</div>' +
+               '</div>';
+      }
+
+      function historyTable(rows) {
+        if (!rows || !rows.length) return '';
+        var body = rows.map(function (r) {
+          var dur = (r.a == null)
+            ? '—'
+            : '<span class=\"aging-pill ' + r.ac + '\">' + r.a + ' days</span>';
+          return '<tr>' +
+                   '<td>' + esc(r.d) + '</td>' +
+                   '<td><span class=\"status-pill ' + r.sc + '\">' + esc(r.s) + '</span></td>' +
+                   '<td>' + dur + '</td>' +
+                 '</tr>';
+        }).join('');
+        return '<div class=\"history-table-wrap\">' +
+                 '<div class=\"history-table-caption\">Case History</div>' +
+                 '<table class=\"history-mini\">' +
+                   '<thead><tr><th>Hearing Date</th><th>Case Status</th><th>Duration</th></tr></thead>' +
+                   '<tbody>' + body + '</tbody>' +
+                 '</table>' +
+               '</div>';
+      }
+
+      window.renderCaseDetails = function (caseId) {
+        if (window.__litError) return '<div class=\"case-detail-panel\">Case details could not be loaded (this browser may not support in-page decompression).</div>';
+        if (!window.__litReady) return '<div class=\"case-detail-panel\">Loading case details…</div>';
+        var d = (window.detailsByCase || {})[caseId];
+        var h = (window.historyByCase || {})[caseId] || [];
+        if (!d) return '<div class=\"case-detail-panel\">No details available.</div>';
+
+        var ci = CI_LABELS.map(function (lbl, i) {
+          var accent = (i === CI_LABELS.length - 1) ? d.acc : null; // Active Status
+          return field(lbl, d.ci[i], accent);
+        }).join('');
+
+        var ai = AI_LABELS.map(function (lbl, i) {
+          return field(lbl, d.ai[i]);
+        }).join('');
+
+        return '<div class=\"case-detail-panel\">' +
+                 section('Case Info', ci) +
+                 section('Account Info', ai) +
+                 historyTable(h) +
+               '</div>';
+      };
+    })();
+  "))
+)
+```
+
+NI
+==========================================================================================
+
+Column {data-width=100}
+------------------------------------------------------------------------------------------
+
+### Filters
+
+```{r ni-data, include=FALSE}
+suit_ni <- "Negotiable Instrument Act (NI Act)"
+data_ni <- data %>%
+  filter(`Nature of Suit` == suit_ni) %>%
+  distinct()
+```
+
+```{r}
+render_filter_panel(data_ni, "ni-table", "ni")
+```
+
+Column {data-width=750}
+------------------------------------------------------------------------------------------
+
+### Case Status/Case Details
+
+```{r}
+render_case_table(data_ni, history, suit_ni, "ni-table")
+```
+
+ARA
+==========================================================================================
+
+Column {data-width=100}
+------------------------------------------------------------------------------------------
+
+### Filters
+
+```{r ara-data, include=FALSE}
+suit_ara <- "Artha Rin Aine (ARA)"
+data_ara <- data %>%
+  filter(`Nature of Suit` == suit_ara) %>%
+  distinct()
+```
+
+```{r}
+render_filter_panel(data_ara, "ara-table", "ara")
+```
+
+Column {data-width=750}
+------------------------------------------------------------------------------------------
+
+### Case Status/Case Details
+
+```{r}
+render_case_table(data_ara, history, suit_ara, "ara-table")
+```
+
+ARAE
+==========================================================================================
+
+Column {data-width=100}
+------------------------------------------------------------------------------------------
+
+### Filters
+
+```{r arae-data, include=FALSE}
+suit_arae <- "Artha Rin Aine Execution (ARAE)"
+data_arae <- data %>%
+  filter(`Nature of Suit` == suit_arae) %>%
+  distinct()
+```
+
+```{r}
+render_filter_panel(data_arae, "arae-table", "arae")
+```
+
+Column {data-width=750}
+------------------------------------------------------------------------------------------
+
+### Case Status/Case Details
+
+```{r}
+render_case_table(data_arae, history, suit_arae, "arae-table")
+```
