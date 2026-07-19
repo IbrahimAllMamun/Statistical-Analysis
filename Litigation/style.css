@@ -320,11 +320,20 @@ body {
   transform: translateY(-1px);
 }
 .case-detail-field:hover::before { opacity: 1; }
+.case-detail-field.card-present-status {
+  background: linear-gradient(135deg, #FFF3E0, #ffe9cc);
+  border-color: #F5C888;
+}
+.case-detail-field.card-present-status::before {
+  background: linear-gradient(#f59e0b, #c2740a);
+  opacity: 1;
+}
 .case-detail-field.card-active {
   background: linear-gradient(135deg, #EAF7EE, #ddf1e4);
   border-color: #A9DDB8;
 }
 .case-detail-field.card-active::before { background: linear-gradient(#2fae6a, #157a3a); opacity: 1; }
+
 .case-detail-field.card-inactive {
   background: linear-gradient(135deg, #FBEAEA, #f6dcdc);
   border-color: #EFB4B4;
@@ -472,3 +481,37 @@ body {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: #a6b2c7; background-clip: padding-box; }
+
+
+/* ============ SUMMARY TAB (B2: crosstalk + reactable) ============ */
+
+.summary-filter-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  background: #FAFBFD;
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+/* crosstalk widgets render their own markup; tighten their default spacing */
+.summary-filter-bar .form-group {
+  margin-bottom: 0;
+}
+.summary-filter-bar label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #203764;
+}
+.summary-filter-bar .checkbox-inline {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: #333;
+}
+

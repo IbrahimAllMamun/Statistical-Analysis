@@ -1,0 +1,9 @@
+default:
+  DB_DRIVER: ODBC Driver 17 for SQL Server
+  DB_SERVER: devanalyticsdb.intra.idlc.com
+  DB_DATABASE: DevAnalyticsDB
+  DB_UID: devuser
+  DB_PWD: userdev
+  DB_PORT: 1433
+
+  
