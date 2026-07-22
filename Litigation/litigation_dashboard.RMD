@@ -33,10 +33,10 @@ library(bizdays)
 source("helpers.R")
 
 
-set.seed(121)
-acs <- data %>% pull(AccountNumber) %>% unique()
-acs <- acs[sample(seq_along(acs), 200)]
-data <- data %>% filter(AccountNumber %in% acs)
+# set.seed(121)
+# acs <- data %>% pull(AccountNumber) %>% unique()
+# acs <- acs[sample(seq_along(acs), 200)]
+# data <- data %>% filter(AccountNumber %in% acs)
 
 # 146603
 # or_fgvem_07
@@ -69,7 +69,7 @@ htmltools::tags$style(htmltools::HTML(paste(readLines("style.css"), collapse = "
 # Embed the per-case detail data ONCE, plus the JS that renders a panel
 # on-demand when a row is expanded. This keeps the file small (no pre-rendered
 # HTML for 25k cases) while producing the same panel the R version did.
-report_date <- format(Sys.Date(), "%d %b %Y")   # or pull from your data
+
 htmltools::tagList(
   htmltools::tags$script(htmltools::HTML(paste0(
     "window.__LIT_PAYLOAD_B64 = \"", payload_b64, "\";"

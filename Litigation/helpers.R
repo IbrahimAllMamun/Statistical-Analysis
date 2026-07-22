@@ -93,9 +93,10 @@ report_date <- as.Date(bizdays::add.bizdays(report_date, -1, "BD"))
 
 rm(query, Validation, BD_Calender)
 
+rm(query, Validation, BD_Calender)
 
 
-
+save.image("data.RDS")
 
 
 # ============================================================================
@@ -713,72 +714,308 @@ render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+# =====================================================================
+# SUMMARY -- pre-aggregated, reactable NATIVE filtering (no crosstalk)
+# - Data is collapsed to one row per SuitType x Present_Case_Status x
+#   Branch x Product. Statuses are unique within each suit.
+# - groupBy = "SuitType": expand shows the status rows (one tier only).
+# - Branch/Product filtering uses reactable's OWN column filters
+#   (custom dropdowns) -- which CAN filter grouped/aggregated data,
+#   unlike crosstalk. No Shiny, no second expand tier.
+# =====================================================================
+
+# ---- per-suit-type procedural status orderings ----
+# Each suit type moves through a different sequence; these lists encode the
+# real procedural order (filing -> evidence -> judgment -> disposal).
+status_order_ni <- c(
+  "Summon Return", "Account Statement Submission", "Paper Submission",
+  "Report Submission", "Petition Hearing", "Charge Hearing",
+  "Witness", "Cross Examination", "Defence Witness",
+  "Argument", "Section-342", "Section-342/Argument", "WP&A",
+  "For Judgment", "Judgment",
+  "Warrant of Arrest", "For Withdraw", "Transferred",
+  "Judgment & Decreed", "Withdrawn"
+)
+
+status_order_ara <- c(
+  "Summon Return", "Court Fee Submission", "Paper Submission", "Written Statement",
+  "Mediators Report Submission",
+  "P.H.", "Petition Hearing", "Ex Parte Hearing",
+  "Witness", "Cross Examination",
+  "Argument", "For Order", "For Judgment",
+  "For Withdraw",
+  "Decreed", "Sole Decreed", "Judgment & Decreed", "Withdrawn"
+)
+
+status_order_arae <- c(
+  "Summon Return", "Paper Submission", "Report Submission", "Steps",
+  "Petition Hearing", "For Order",
+  "Steps For Warrant of Arrest Under Section 34 (1)", "Warrant of Arrest",
+  "Warrant of arrest to Borrower", "Warrant of arrest to Guarantor",
+  "Deposition of money",
+  "Certificate Under Section 33 (5)/33 (7)", "Certificate Received",
+  "Transferred", "For Withdraw",
+  "Disposed Under Section 33(9)", "Abated", "Withdrawn"
+)
+
+# Map the SuitType's *display name* to its ordering vector.
+# Adjust these keys to match the exact strings in your `Nature of Suit` column.
+status_orders <- list(
+  "Negotiable Instrument Act (NI Act)"   = status_order_ni,
+  "Artha Rin Aine (ARA)"                 = status_order_ara,
+  "Artha Rin Aine Execution (ARAE)"      = status_order_arae
+)
+
+# Build a lookup: one row per (SuitType, Present_Case_Status, rank).
+# Any status not in a suit's list gets a large rank (sorted to the bottom),
+# and the "\u2014" missing bucket goes last of all.
+build_status_rank <- function() {
+  purrr::imap_dfr(status_orders, function(ord, suit) {
+    tibble::tibble(
+      SuitType            = suit,
+      Present_Case_Status = ord,
+      .status_rank        = seq_along(ord)
+    )
+  })
+}
+
+suits <- c("Negotiable Instrument Act (NI Act)", "Artha Rin Aine (ARA)", "Artha Rin Aine Execution (ARAE)")
+
+build_summary_data <- function(data_all) {
+  rank_lookup <- build_status_rank()
+  
+  data_all %>%
+    distinct(CaseID, .keep_all = TRUE) %>%
+    mutate(
+      SuitValue     = suppressWarnings(as.numeric(`Suit Value`)),
+      Receivable    = suppressWarnings(as.numeric(Litigation_Receivable)),
+      OverdueAmount = suppressWarnings(as.numeric(OVERDUE_AMOUNT)),
+      Aging         = suppressWarnings(as.numeric(Aging))
+    ) %>%
+    group_by(
+      Branch,
+      Product             = PRODUCT_CATEGORY_LABEL,
+      SuitType            = `Nature of Suit`,
+      Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014")
+    ) %>%
+    summarise(
+      Cases         = dplyr::n(),
+      ActiveCases   = sum(LitigationStatus == "Active", na.rm = TRUE),
+      SuitValue     = sum(SuitValue, na.rm = TRUE),
+      Receivable    = sum(Receivable, na.rm = TRUE),
+      OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
+      Aging         = mean(Aging, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(
+      dplyr::across(c(SuitValue, Receivable, OverdueAmount), ~tidyr::replace_na(., 0)),
+      Aging = ifelse(is.nan(Aging), NA_real_, Aging)
+    ) %>%
+    dplyr::left_join(rank_lookup, by = c("SuitType", "Present_Case_Status")) %>%
+    dplyr::mutate(
+      .suit_rank   = match(SuitType, suits),                    # NI=1, ARA=2, ARAE=3
+      .suit_rank   = dplyr::coalesce(.suit_rank, 999L),          # unknown suits last
+      .status_rank = dplyr::case_when(
+        Present_Case_Status == "\u2014" ~ 9999,
+        is.na(.status_rank)             ~ 9000,
+        TRUE                            ~ .status_rank
+      )
+    ) %>%
+    dplyr::arrange(.suit_rank, .status_rank, Present_Case_Status) %>%   # suit order, then status order
+    dplyr::select(-.status_rank, -.suit_rank)
+}
+
+# data_new <- build_summary_data(data)
 # 
 # 
+# suits <- c("Negotiable Instrument Act (NI Act)","Artha Rin Aine (ARA)","Artha Rin Aine Execution (ARAE)")
 # 
-# 
-# build_summary_data <- function(data) {
-#   data_all %>%
-#     distinct(CaseID, .keep_all = TRUE) %>%
-#     mutate(
-#       SuitValue     = suppressWarnings(as.numeric(`Suit Value`)),
-#       Receivable    = suppressWarnings(as.numeric(Litigation_Receivable)),
-#       OverdueAmount = suppressWarnings(as.numeric(OVERDUE_AMOUNT)),
-#       Aging         = suppressWarnings(as.numeric(Aging))
-#     ) %>%
-#     group_by(
-#       Branch,
-#       Product             = PRODUCT_CATEGORY_LABEL,
-#       SuitType            = `Nature of Suit`,
-#       Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014")
-#     ) %>%
-#     summarise(
-#       Cases         = dplyr::n(),
-#       ActiveCases   = sum(LitigationStatus == "Active", na.rm = TRUE),
-#       SuitValue     = sum(SuitValue, na.rm = TRUE),
-#       Receivable    = sum(Receivable, na.rm = TRUE),
-#       OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
-#       Aging         = mean(Aging, na.rm = TRUE),
-#       .groups = "drop"
-#     ) %>%
-#     mutate(
-#       dplyr::across(c(SuitValue, Receivable, OverdueAmount), ~tidyr::replace_na(., 0)),
-#       Aging = ifelse(is.nan(Aging), NA_real_, Aging)
-#     )
-# }
-# 
-# 
-# 
-# 
-# 
-# 
-# render_summary <- function(data){
-#   suit_df <- data %>% 
-#     select(suit_nature = `Nature of Suit`) %>% 
-#     distinct(suit_nature)
-#   
-#   reactable(
-#     suit_df,
-#     theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
-#     columns = list(
-#       suit_nature = colDef(
-#         name = "Nature of Suit",
-#         details = function(index) {
-#           # the suit nature for THIS expanded row:
-#           this_suit <- suit_df$suit_nature[index]
-#           
-#           htmltools::div(
-#             "Details for: ", this_suit
-#           )
-#         }
-#       )
-#     ),
-#     bordered = TRUE,
-#     defaultPageSize = 50,
-#     showPageSizeOptions = TRUE,
-#     pageSizeOptions = c(25, 50, 100),
-#     paginationType = "jump"
-#   )
-# }
-# 
-# 
+# data_new %>% 
+#   select(SuitType, Present_Case_Status) %>% 
+#   distinct() %>% 
+#   filter(SuitType == suits[3]) %>% 
+#   pull(Present_Case_Status)
+
+
+
+summary_lakh_js <- "
+  window.fmtLakhCr = function(num) {
+    if (num == null || isNaN(num)) return '\u2014';
+    var neg = num < 0; num = Math.round(Math.abs(num));
+    var str = num.toString();
+    if (str.length <= 3) return (neg?'-':'') + str;
+    var last3 = str.slice(-3);
+    var rest = str.slice(0, -3).replace(/\\B(?=(\\d{2})+(?!\\d))/g, ',');
+    return (neg?'-':'') + rest + ',' + last3;
+  };
+"
+
+render_summary <- function(data_all) {
+  sdat <- build_summary_data(data_all)
+  
+  money_cell <- reactable::JS("function(ci){ return ci.value==null||isNaN(ci.value) ? '\u2014' : fmtLakhCr(ci.value); }")
+  aging_cell <- reactable::JS("function(ci){ return ci.value==null||isNaN(ci.value) ? '\u2014' : Math.round(Math.abs(ci.value)) + ' Days'; }")
+  
+  # custom dropdown filter for a column: exact-match select of that column's values
+  make_select_filter <- function(colId) {
+    reactable::JS(sprintf("
+      function(column, state) {
+        var opts = [...new Set(state.data.map(function(r){ return r['%s']; }))].sort();
+        var el = document.createElement('select');
+        el.style.width = '100%%';
+        el.onchange = function(e){ column.setFilter(e.target.value || undefined); };
+        var all = document.createElement('option'); all.value = ''; all.text = 'All'; el.appendChild(all);
+        opts.forEach(function(v){
+          var o = document.createElement('option'); o.value = v; o.text = v;
+          if (v === column.filterValue) o.selected = true;
+          el.appendChild(o);
+        });
+        return el;
+      }
+    ", colId))
+  }
+  
+  # exact-match filter method (select gives an exact value; group rows kept if any child matches)
+  exact_filter <- reactable::JS("
+    function(rows, columnId, filterValue) {
+      return rows.filter(function(row) {
+        function anyMatch(r) {
+          if (r.subRows && r.subRows.length) return r.subRows.some(anyMatch);
+          return String(r.values[columnId]) === String(filterValue);
+        }
+        return anyMatch(row);
+      });
+    }
+  ")
+  
+  tbl <- reactable::reactable(
+    sdat,
+    groupBy = c("SuitType","Present_Case_Status"),
+    filterable = FALSE,          # we enable filtering only on Branch/Product below
+    defaultExpanded = FALSE,
+    theme = reactable::reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
+    columns = list(
+      SuitType = reactable::colDef(name = "Nature of Suit", minWidth = 270),
+      Present_Case_Status = reactable::colDef(name = "Present Case Status", minWidth = 250),
+      
+      Cases         = reactable::colDef(name = "Cases", aggregate = "sum"),
+      ActiveCases   = reactable::colDef(name = "Active", aggregate = "sum"),
+      SuitValue     = reactable::colDef(name = "Suit Value", aggregate = "sum", aggregated = money_cell, cell = money_cell),
+      Receivable    = reactable::colDef(name = "Receivable", aggregate = "sum", aggregated = money_cell, cell = money_cell),
+      OverdueAmount = reactable::colDef(name = "Overdue", aggregate = "sum", aggregated = money_cell, cell = money_cell),
+      Aging         = reactable::colDef(name = "Aging (Avg.)", aggregate = "mean", aggregated = aging_cell, cell = aging_cell),
+      
+      # Branch / Product: shown as filter rows via custom dropdowns, but the
+      # column body itself hidden (we don't want them as visible columns).
+      Branch = reactable::colDef(
+        show = FALSE, filterable = TRUE,
+        filterInput = make_select_filter("Branch"),
+        filterMethod = exact_filter
+      ),
+      Product = reactable::colDef(
+        show = FALSE, filterable = TRUE,
+        filterInput = make_select_filter("Product"),
+        filterMethod = exact_filter
+      )
+    ),
+    bordered = TRUE,
+    highlight = TRUE,
+    defaultPageSize = 25,
+    showPageSizeOptions = TRUE,
+    pageSizeOptions = c(10, 25, 50),
+    elementId = "summary-table"
+  )
+  
+  # Because Branch/Product are hidden, their filter inputs won't render in the
+  # header. So expose them as external dropdowns that drive the same filters.
+  branches <- sort(unique(sdat$Branch))
+  products <- c("SME", sort(setdiff(unique(sdat$Product), "SME")))
+  
+  filter_bar <- htmltools::div(
+    class = "summary-filter-bar",
+    htmltools::div(class = "summary-filter-group",
+                   htmltools::tags$label("Branch", class = "filter-label"),
+                   htmltools::tags$select(
+                     class = "filter-select",
+                     onchange = "Reactable.setFilter('summary-table', 'Branch', this.value || undefined)",
+                     htmltools::tags$option(value = "", "All Branches"),
+                     lapply(branches, htmltools::tags$option)
+                   )
+    ),
+    htmltools::div(class = "summary-filter-group",
+                   htmltools::tags$label("Product Category", class = "filter-label"),
+                   htmltools::tags$select(
+                     class = "filter-select",
+                     onchange = "Reactable.setFilter('summary-table', 'Product', this.value || undefined)",
+                     htmltools::tags$option(value = "", "All Products"),
+                     lapply(products, htmltools::tags$option)
+                   )
+    )
+  )
+  
+  htmltools::tagList(
+    htmltools::tags$script(htmltools::HTML(summary_lakh_js)),
+    filter_bar,
+    htmltools::div(class = "summary-breakdown-wrap", tbl),
+    htmltools::tags$script(htmltools::HTML("
+      (function() {
+        function neutralize() {
+          var tbl = document.getElementById('summary-table');
+          if (!tbl) { setTimeout(neutralize, 200); return; }
+
+          // Capture-phase click blocker: if the click is on a 2nd-level
+          // (Present Case Status) group row, stop it before reactable expands it.
+          tbl.addEventListener('click', function(e) {
+            var cell = e.target.closest('.rt-td, [role=\"cell\"], td');
+            if (!cell) return;
+            var row = cell.parentElement;
+            if (!row) return;
+            var idx = Array.prototype.indexOf.call(row.children, cell);
+            // The expander lives in the grouping cell. If a status-level group
+            // cell (col 1) is what triggered it, block expansion.
+            // We detect a status-level GROUP row by: col-1 cell has group content
+            // AND col-0 (SuitType) cell in this row is empty (nested row).
+            var firstCell = row.children[0];
+            var isNested = firstCell && firstCell.textContent.trim() === '';
+            var statusCell = row.children[1];
+            var statusIsGroup = statusCell && statusCell.querySelector('[class*=\"expander\"], button');
+            if (isNested && statusIsGroup) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+          }, true);  // <-- true = capture phase, runs BEFORE reactable's handler
+
+          // also hide the arrows visually
+          var apply = function() {
+            tbl.querySelectorAll('[class*=\"expander\"], button.rt-expander').forEach(function(btn) {
+              var cell = btn.closest('.rt-td, [role=\"cell\"], td');
+              if (!cell) return;
+              var row = cell.parentElement;
+              if (!row) return;
+              if (Array.prototype.indexOf.call(row.children, cell) === 1) {
+                var firstCell = row.children[0];
+                if (firstCell && firstCell.textContent.trim() === '') {
+                  btn.style.visibility = 'hidden';
+                }
+              }
+            });
+          };
+          apply();
+          new MutationObserver(apply).observe(tbl, { childList: true, subtree: true });
+        }
+        neutralize();
+      })();
+    "))
+    )
+}
