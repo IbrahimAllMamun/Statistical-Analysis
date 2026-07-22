@@ -26,6 +26,9 @@ library(DBI)
 library(odbc)
 
 library(crosstalk)
+library(bizdays)
+
+
 
 source("helpers.R")
 
@@ -195,99 +198,99 @@ htmltools::tagList(
 ```
 
 
-SUMMARY
+<!-- SUMMARY -->
+<!-- ========================================================================================== -->
+
+<!-- Column {data-width=1000} -->
+<!-- ------------------------------------------------------------------------------------------ -->
+
+<!-- ### Litigation Summary -->
+
+<!-- ```{r} -->
+<!-- render_summary(data) -->
+<!-- ``` -->
+
+
+NI
 ==========================================================================================
 
-Column {data-width=1000}
+Column {data-width=150}
 ------------------------------------------------------------------------------------------
 
-### Litigation Summary
+### Filters
 
-```{r}
-render_summary(data)
+```{r ni-data, include=FALSE}
+suit_ni <- "Negotiable Instrument Act (NI Act)"
+data_ni <- data %>%
+  filter(`Nature of Suit` == suit_ni) %>%
+  distinct()
 ```
 
+```{r}
+render_filter_panel(data_ni, "ni-table", "ni")
+```
 
-<!-- NI -->
-<!-- ========================================================================================== -->
+Column {data-width=850}
+------------------------------------------------------------------------------------------
 
-<!-- Column {data-width=150} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+### Case Status/Case Details
 
-<!-- ### Filters -->
+```{r}
+render_case_table(data_ni, history, suit_ni, "ni-table")
+```
 
-<!-- ```{r ni-data, include=FALSE} -->
-<!-- suit_ni <- "Negotiable Instrument Act (NI Act)" -->
-<!-- data_ni <- data %>% -->
-<!--   filter(`Nature of Suit` == suit_ni) %>% -->
-<!--   distinct() -->
-<!-- ``` -->
+ARA
+==========================================================================================
 
-<!-- ```{r} -->
-<!-- render_filter_panel(data_ni, "ni-table", "ni") -->
-<!-- ``` -->
+Column {data-width=150}
+------------------------------------------------------------------------------------------
 
-<!-- Column {data-width=850} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+### Filters
 
-<!-- ### Case Status/Case Details -->
+```{r ara-data, include=FALSE}
+suit_ara <- "Artha Rin Aine (ARA)"
+data_ara <- data %>%
+  filter(`Nature of Suit` == suit_ara) %>%
+  distinct()
+```
 
-<!-- ```{r} -->
-<!-- render_case_table(data_ni, history, suit_ni, "ni-table") -->
-<!-- ``` -->
+```{r}
+render_filter_panel(data_ara, "ara-table", "ara")
+```
 
-<!-- ARA -->
-<!-- ========================================================================================== -->
+Column {data-width=850}
+------------------------------------------------------------------------------------------
 
-<!-- Column {data-width=150} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+### Case Status/Case Details
 
-<!-- ### Filters -->
+```{r}
+render_case_table(data_ara, history, suit_ara, "ara-table")
+```
 
-<!-- ```{r ara-data, include=FALSE} -->
-<!-- suit_ara <- "Artha Rin Aine (ARA)" -->
-<!-- data_ara <- data %>% -->
-<!--   filter(`Nature of Suit` == suit_ara) %>% -->
-<!--   distinct() -->
-<!-- ``` -->
+ARAE
+==========================================================================================
 
-<!-- ```{r} -->
-<!-- render_filter_panel(data_ara, "ara-table", "ara") -->
-<!-- ``` -->
+Column {data-width=150}
+------------------------------------------------------------------------------------------
 
-<!-- Column {data-width=850} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+### Filters
 
-<!-- ### Case Status/Case Details -->
+```{r arae-data, include=FALSE}
+suit_arae <- "Artha Rin Aine Execution (ARAE)"
+data_arae <- data %>%
+  filter(`Nature of Suit` == suit_arae) %>%
+  distinct()
+```
 
-<!-- ```{r} -->
-<!-- render_case_table(data_ara, history, suit_ara, "ara-table") -->
-<!-- ``` -->
+```{r}
+render_filter_panel(data_arae, "arae-table", "arae")
+```
 
-<!-- ARAE -->
-<!-- ========================================================================================== -->
+Column {data-width=850}
+------------------------------------------------------------------------------------------
 
-<!-- Column {data-width=150} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+### Case Status/Case Details
 
-<!-- ### Filters -->
-
-<!-- ```{r arae-data, include=FALSE} -->
-<!-- suit_arae <- "Artha Rin Aine Execution (ARAE)" -->
-<!-- data_arae <- data %>% -->
-<!--   filter(`Nature of Suit` == suit_arae) %>% -->
-<!--   distinct() -->
-<!-- ``` -->
-
-<!-- ```{r} -->
-<!-- render_filter_panel(data_arae, "arae-table", "arae") -->
-<!-- ``` -->
-
-<!-- Column {data-width=850} -->
-<!-- ------------------------------------------------------------------------------------------ -->
-
-<!-- ### Case Status/Case Details -->
-
-<!-- ```{r} -->
-<!-- render_case_table(data_arae, history, suit_arae, "arae-table") -->
-<!-- ``` -->
+```{r}
+render_case_table(data_arae, history, suit_arae, "arae-table")
+```

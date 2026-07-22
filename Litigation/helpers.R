@@ -713,72 +713,72 @@ render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
 
 
 
-
-
-
-
-build_summary_data <- function(data) {
-  data_all %>%
-    distinct(CaseID, .keep_all = TRUE) %>%
-    mutate(
-      SuitValue     = suppressWarnings(as.numeric(`Suit Value`)),
-      Receivable    = suppressWarnings(as.numeric(Litigation_Receivable)),
-      OverdueAmount = suppressWarnings(as.numeric(OVERDUE_AMOUNT)),
-      Aging         = suppressWarnings(as.numeric(Aging))
-    ) %>%
-    group_by(
-      Branch,
-      Product             = PRODUCT_CATEGORY_LABEL,
-      SuitType            = `Nature of Suit`,
-      Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014")
-    ) %>%
-    summarise(
-      Cases         = dplyr::n(),
-      ActiveCases   = sum(LitigationStatus == "Active", na.rm = TRUE),
-      SuitValue     = sum(SuitValue, na.rm = TRUE),
-      Receivable    = sum(Receivable, na.rm = TRUE),
-      OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
-      Aging         = mean(Aging, na.rm = TRUE),
-      .groups = "drop"
-    ) %>%
-    mutate(
-      dplyr::across(c(SuitValue, Receivable, OverdueAmount), ~tidyr::replace_na(., 0)),
-      Aging = ifelse(is.nan(Aging), NA_real_, Aging)
-    )
-}
-
-
-
-
-
-
-render_summary <- function(data){
-  suit_df <- data %>% 
-    select(suit_nature = `Nature of Suit`) %>% 
-    distinct(suit_nature)
-  
-  reactable(
-    suit_df,
-    theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
-    columns = list(
-      suit_nature = colDef(
-        name = "Nature of Suit",
-        details = function(index) {
-          # the suit nature for THIS expanded row:
-          this_suit <- suit_df$suit_nature[index]
-          
-          htmltools::div(
-            "Details for: ", this_suit
-          )
-        }
-      )
-    ),
-    bordered = TRUE,
-    defaultPageSize = 50,
-    showPageSizeOptions = TRUE,
-    pageSizeOptions = c(25, 50, 100),
-    paginationType = "jump"
-  )
-}
-
-
+# 
+# 
+# 
+# 
+# build_summary_data <- function(data) {
+#   data_all %>%
+#     distinct(CaseID, .keep_all = TRUE) %>%
+#     mutate(
+#       SuitValue     = suppressWarnings(as.numeric(`Suit Value`)),
+#       Receivable    = suppressWarnings(as.numeric(Litigation_Receivable)),
+#       OverdueAmount = suppressWarnings(as.numeric(OVERDUE_AMOUNT)),
+#       Aging         = suppressWarnings(as.numeric(Aging))
+#     ) %>%
+#     group_by(
+#       Branch,
+#       Product             = PRODUCT_CATEGORY_LABEL,
+#       SuitType            = `Nature of Suit`,
+#       Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014")
+#     ) %>%
+#     summarise(
+#       Cases         = dplyr::n(),
+#       ActiveCases   = sum(LitigationStatus == "Active", na.rm = TRUE),
+#       SuitValue     = sum(SuitValue, na.rm = TRUE),
+#       Receivable    = sum(Receivable, na.rm = TRUE),
+#       OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
+#       Aging         = mean(Aging, na.rm = TRUE),
+#       .groups = "drop"
+#     ) %>%
+#     mutate(
+#       dplyr::across(c(SuitValue, Receivable, OverdueAmount), ~tidyr::replace_na(., 0)),
+#       Aging = ifelse(is.nan(Aging), NA_real_, Aging)
+#     )
+# }
+# 
+# 
+# 
+# 
+# 
+# 
+# render_summary <- function(data){
+#   suit_df <- data %>% 
+#     select(suit_nature = `Nature of Suit`) %>% 
+#     distinct(suit_nature)
+#   
+#   reactable(
+#     suit_df,
+#     theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
+#     columns = list(
+#       suit_nature = colDef(
+#         name = "Nature of Suit",
+#         details = function(index) {
+#           # the suit nature for THIS expanded row:
+#           this_suit <- suit_df$suit_nature[index]
+#           
+#           htmltools::div(
+#             "Details for: ", this_suit
+#           )
+#         }
+#       )
+#     ),
+#     bordered = TRUE,
+#     defaultPageSize = 50,
+#     showPageSizeOptions = TRUE,
+#     pageSizeOptions = c(25, 50, 100),
+#     paginationType = "jump"
+#   )
+# }
+# 
+# 
