@@ -123,6 +123,9 @@ htmltools::tagList(
         'Court No','Next Hearing Date','Cheque Number','Litigation Receivable','Present Case Status','Active Status'];
       var AI_LABELS = ['RM Name', 'Product Category', 'URPA','Overdue Amount','Principal OD', 'Interest OD', 'MOD', 'LPI',
         'Net Excise Duty (Last Year)','Net Excise Duty (Current Year)'];
+        
+      window.CI_LABELS = CI_LABELS;
+      window.AI_LABELS = AI_LABELS;
 
       function esc(s) {
         return String(s == null ? '—' : s)
@@ -193,22 +196,112 @@ htmltools::tagList(
                '</div>';
       };
     })();
-  "))
+  ")),
+htmltools::tags$script(htmltools::HTML("
+  // Explicit export layout: [Header, source, key]
+  //   source 'main' -> column on the reactable row
+  //   source 'ci'   -> index into detailsByCase[caseId].ci
+  //   source 'ai'   -> index into detailsByCase[caseId].ai
+  var EXPORT_COLS = [
+    ['ClientName',                    'main', 'ClientName'],
+    ['CIF',                           'main', 'CIF'],
+    ['AccountNumber',                 'main', 'AccountNumber'],
+    ['CaseID',                        'main', 'CaseID'],
+    ['Branch',                        'main', 'Branch'],
+    ['LitigationStatus',              'main', 'LitigationStatus'],
+    ['Product Category',              'ai',   1],
+    ['Nature of Suit',                'ci',   0],
+    ['Court No',                      'ci',   4],
+    ['Law Firm',                      'ci',   3],
+    ['Cheque Number',                 'ci',   6],
+    ['Suit Filing Date',              'ci',   2],
+    ['Suit Value',                    'ci',   1],
+    ['Litigation Receivable',         'ci',   7],
+    ['Next Hearing Date',             'ci',   5],
+    ['Present Case Status',           'ci',   8],
+    ['RM Name',                       'ai',   0],
+    ['URPA',                          'ai',   2],
+    ['Overdue Amount',                'ai',   3],
+    ['Principal OD',                  'ai',   4],
+    ['Interest OD',                   'ai',   5],
+    ['MOD',                           'ai',   6],
+    ['LPI',                           'ai',   7],
+    ['Net Excise Duty (Last Year)',   'ai',   8],
+    ['Net Excise Duty (Current Year)','ai',   9]
+  ];
+
+  function downloadFiltered(tableId, filename) {
+    if (!window.__litReady) { alert('Case details still loading - try again in a moment.'); return; }
+    var state = Reactable.getState(tableId);
+    var src = state.sortedData || state.data || [];
+
+    function flatten(rows, out) {
+      rows.forEach(function(r) {
+        if (r._subRows && r._subRows.length) flatten(r._subRows, out);
+        else out.push(r);
+      });
+      return out;
+    }
+    var rows = flatten(src, []);
+    if (!rows.length) { alert('No rows to export.'); return; }
+
+    var DQ = String.fromCharCode(34);
+    var esc = function(v) {
+      var s = (v == null ? '' : String(v));
+      s = s.split(DQ).join(DQ + DQ);
+      if (s.indexOf(DQ) !== -1 || s.indexOf(',') !== -1 || s.indexOf('\\n') !== -1) {
+        return DQ + s + DQ;
+      }
+      return s;
+    };
+
+    var lines = [EXPORT_COLS.map(function(c){ return esc(c[0]); }).join(',')];
+
+    rows.forEach(function(r) {
+      var d = (window.detailsByCase || {})[String(r['CaseID'])] || {};
+      var ci = d.ci || [];
+      var ai = d.ai || [];
+      var line = EXPORT_COLS.map(function(c) {
+        if (c[1] === 'main') return r[c[2]];
+        if (c[1] === 'ci')   return ci[c[2]];
+        return ai[c[2]];
+      });
+      lines.push(line.map(esc).join(','));
+    });
+
+    var blob = new Blob(['\\uFEFF' + lines.join('\\n')], { type: 'text/csv;charset=utf-8;' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename || 'export.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+"))
 )
 ```
 
 
-<!-- SUMMARY -->
-<!-- ========================================================================================== -->
+SUMMARY
+==========================================================================================
 
-<!-- Column {data-width=1000} -->
-<!-- ------------------------------------------------------------------------------------------ -->
+Column {data-width=150}
+------------------------------------------------------------------------------------------
 
-<!-- ### Litigation Summary -->
+### Filters
+```{r}
+res <- render_summary(data)
+res$filter
+```
+Column {data-width=850}
+------------------------------------------------------------------------------------------
 
-<!-- ```{r} -->
-<!-- render_summary(data) -->
-<!-- ``` -->
+
+### Litigation Summary
+
+```{r}
+res$table
+```
+
 
 
 NI
@@ -294,3 +387,8 @@ Column {data-width=850}
 ```{r}
 render_case_table(data_arae, history, suit_arae, "arae-table")
 ```
+
+
+
+
+['Nature of Suit','Suit Value','Suit Filing Date','Court No','Next Hearing Date','Cheque Number','Litigation Receivable','Present Case Status','Active Status'];

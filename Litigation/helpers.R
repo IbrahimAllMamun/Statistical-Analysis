@@ -76,20 +76,52 @@ history <- history %>%
     MakeDate
   )
 
-data <- data %>%
-  distinct(CaseID, .keep_all = TRUE) %>% 
-  mutate(
-    PRODUCT_CATEGORY_LABEL = ifelse(PRODUCT_CATEGORY=="SME", "SME", "Other")
-  ) %>% 
-  filter(`Nature of Suit` %in% c("Negotiable Instrument Act (NI Act)","Artha Rin Aine (ARA)","Artha Rin Aine Execution (ARAE)"))
 
-
-library(bizdays)
-
+# End of the current work week: the upcoming Thursday (or today if today IS Thursday).
+# wday(): Sunday=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6, Sat=7
 Validation <- tbl(con, DBI::Id(schema = "SME", table = "Holiday")) %>% collect()
 BD_Calender <- create.calendar(name = "BD", holidays = Validation$Date, weekdays = c("friday", "saturday"))
 report_date <- dbGetQuery(con,"SELECT MAX([ReportPreparationDate]) dt FROM [dbo].[AnalyticsLitigationAccount]") %>% pull(dt)
 report_date <- as.Date(bizdays::add.bizdays(report_date, -1, "BD"))
+
+
+today_date <- Sys.Date()
+
+# end of the next-5-working-day window
+next5_end <- as.Date(bizdays::add.bizdays(today_date, 5, "BD"))
+
+month_end      <- lubridate::ceiling_date(today_date, "month") - lubridate::days(1)
+next_month_end <- lubridate::ceiling_date(today_date %m+% months(1), "month") - lubridate::days(1)
+
+data <- data %>%
+  distinct(CaseID, .keep_all = TRUE) %>% 
+  mutate(
+    PRODUCT_CATEGORY_LABEL = ifelse(PRODUCT_CATEGORY == "SME", "SME", "Other"),
+    .nhd     = as.Date(`Next Hearing Date`),
+    upcoming = case_when(
+      is.na(.nhd)            ~ "No Date",
+      .nhd <  today_date     ~ "Not Updated",
+      .nhd == today_date     ~ "Today",
+      .nhd <= next5_end      ~ "Next 5 Working Days",
+      .nhd <= month_end      ~ "This Month",
+      .nhd <= next_month_end ~ "Next Month",
+      TRUE                   ~ "Later"
+    ),
+    in_this_month = !is.na(.nhd) & .nhd >= today_date & .nhd <= month_end,
+    in_next_month = !is.na(.nhd) & .nhd >  month_end  & .nhd <= next_month_end,
+    SuitType  = case_when(
+      `Nature of Suit` == "Negotiable Instrument Act (NI Act)" ~"NI Act",
+      `Nature of Suit` == "Artha Rin Aine (ARA)" ~  "ARA",
+      `Nature of Suit` == "Artha Rin Aine Execution (ARAE)" ~  "ARAE",
+      .default = "Other"
+    ),
+  ) %>% 
+  select(-.nhd) %>% 
+  filter(SuitType != "Other")
+
+
+
+
 
 rm(query, Validation, BD_Calender)
 
@@ -268,6 +300,8 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
   account_lookup <- data_tab %>%
     distinct(Branch, LitigationStatus, PRODUCT_CATEGORY_LABEL, CIF, ClientName, AccountNumber)
   
+  upcoming_labs <- c("Today","Next 5 Working Days","This Month","Next Month","Later","Not Updated","No Date")
+  
   branch_select_id     <- paste0("branch-select-", suffix)
   cif_input_id         <- paste0("cif-input-", suffix)
   account_input_id     <- paste0("account-input-", suffix)
@@ -288,6 +322,9 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
   clientname_input_id     <- paste0("clientname-input-", suffix)
   clientname_datalist_id  <- paste0("clientname-options-", suffix)
   update_clientname_fn    <- paste0("updateClientNameOptions_", suffix)
+  
+  upcoming_select_id   <- paste0("upcoming-select-", suffix)
+  
   
   clear_customer_fn    <- paste0("clearCustomerFilters__", suffix)
   clear_account_fn     <- paste0("clearAccountFilters__", suffix)
@@ -427,6 +464,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         document.querySelectorAll('.{status_cb_class}').forEach(function(b) {{ b.checked = (b.value === 'Active'); }});
         document.querySelectorAll('.{product_cb_class}').forEach(function(b) {{ b.checked = (b.value === 'SME'); }});
         document.getElementById('{clientname_input_id}').value = '';
+        document.getElementById('{upcoming_select_id}').value = '';
         
         Reactable.setFilter('{table_id}', 'Branch', undefined);
         Reactable.setFilter('{table_id}', 'CIF', undefined);
@@ -434,6 +472,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         Reactable.setFilter('{table_id}', 'LitigationStatus', undefined);
         Reactable.setFilter('{table_id}', 'PRODUCT_CATEGORY_LABEL', undefined);
         Reactable.setFilter('{table_id}', 'ClientName', undefined);
+        Reactable.setFilter('{table_id}', 'upcoming', undefined);
 
         {update_status_fn}();
         {update_product_fn}();
@@ -489,6 +528,9 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
     
     htmltools::tags$div(
       class = "filter-panel",
+      
+      htmltools::tags$a("⬇ Download CSV", class = "download-btn",
+                        onclick = paste0("downloadFiltered('",table_id, "', 'litigation_",suffix,".csv')")),
       
       htmltools::tags$div(
         class = "filter-group",
@@ -555,6 +597,18 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
       
       htmltools::tags$div(
         class = "filter-group",
+        htmltools::tags$label("Upcoming Hearing", class = "filter-label"),
+        htmltools::tags$select(
+          id = upcoming_select_id,
+          class = "filter-select",
+          onchange = glue::glue("Reactable.setFilter('{table_id}', 'upcoming', event.target.value === '' ? undefined : event.target.value); {update_cif_fn}(); {update_account_fn}(); {update_clientname_fn}();"),
+          htmltools::tags$option(value = "", "(All)"),
+          lapply(upcoming_labs, htmltools::tags$option)
+        )
+      ),
+      
+      htmltools::tags$div(
+        class = "filter-group",
         htmltools::tags$label("Product Category", class = "filter-label"),
         htmltools::tags$div(
           class = "checkbox-list",
@@ -591,6 +645,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         )
       ),
       
+      
       htmltools::tags$div(
         class = "filter-links",
         htmltools::tags$a("Clear all", onclick = paste0(clear_all_fn, "()"))
@@ -604,7 +659,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
 render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
   reactable(
     data_tab %>% select(all_of(c(
-      "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF", "PRODUCT_CATEGORY_LABEL", "ClientName"
+      "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF", "PRODUCT_CATEGORY_LABEL", "ClientName", "upcoming", "in_this_month", "in_next_month"
     ))),
     elementId = table_id,
     theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
@@ -693,7 +748,29 @@ render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
             });
           }
         ")
-      )
+      ),
+      upcoming = colDef(
+        show = FALSE,
+        filterMethod = JS("
+          function(rows, columnId, filterValue) {
+            if (!filterValue) return rows;
+            // Month buckets use date-derived flags, not labels -- so a
+            // 'Next 5 Working Days' row is counted in whichever month its
+            // hearing date actually falls in.
+            if (filterValue === 'This Month') {
+              return rows.filter(function(row) { return row.values['in_this_month'] === true; });
+            }
+            if (filterValue === 'Next Month') {
+              return rows.filter(function(row) { return row.values['in_next_month'] === true; });
+            }
+            return rows.filter(function(row) {
+              return String(row.values[columnId]) === String(filterValue);
+            });
+          }
+        ")
+      ),
+      in_this_month = colDef(show = FALSE),
+      in_next_month = colDef(show = FALSE)
     ),
     rowStyle = JS("
       function(rowInfo) {
@@ -790,7 +867,7 @@ build_status_rank <- function() {
   })
 }
 
-suits <- c("Negotiable Instrument Act (NI Act)", "Artha Rin Aine (ARA)", "Artha Rin Aine Execution (ARAE)")
+suits <- c("NI Act", "ARA", "ARAE")
 
 build_summary_data <- function(data_all) {
   rank_lookup <- build_status_rank()
@@ -805,13 +882,16 @@ build_summary_data <- function(data_all) {
     ) %>%
     group_by(
       Branch,
-      Product             = PRODUCT_CATEGORY_LABEL,
-      SuitType            = `Nature of Suit`,
-      Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014")
+      Product = PRODUCT_CATEGORY_LABEL,
+      SuitType,
+      Present_Case_Status = dplyr::coalesce(`Present Case Status`, "\u2014"),
+      LitigationStatus,
+      upcoming,
+      in_this_month,
+      in_next_month
     ) %>%
     summarise(
       Cases         = dplyr::n(),
-      ActiveCases   = sum(LitigationStatus == "Active", na.rm = TRUE),
       SuitValue     = sum(SuitValue, na.rm = TRUE),
       Receivable    = sum(Receivable, na.rm = TRUE),
       OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
@@ -889,6 +969,7 @@ render_summary <- function(data_all) {
   # exact-match filter method (select gives an exact value; group rows kept if any child matches)
   exact_filter <- reactable::JS("
     function(rows, columnId, filterValue) {
+      if (!filterValue) return rows;          // <-- ADD THIS
       return rows.filter(function(row) {
         function anyMatch(r) {
           if (r.subRows && r.subRows.length) return r.subRows.some(anyMatch);
@@ -899,34 +980,157 @@ render_summary <- function(data_all) {
     }
   ")
   
+  array_filter <- reactable::JS("
+    function(rows, columnId, filterValue) {
+      if (!filterValue || filterValue.length === 0) return rows;
+      return rows.filter(function(row) {
+        function anyMatch(r) {
+          if (r.subRows && r.subRows.length) return r.subRows.some(anyMatch);
+          return filterValue.includes(r.values[columnId]);
+        }
+        return anyMatch(row);
+      });
+    }
+  ")
+  
   tbl <- reactable::reactable(
     sdat,
-    groupBy = c("SuitType","Present_Case_Status"),
-    filterable = FALSE,          # we enable filtering only on Branch/Product below
+    groupBy = c("SuitType", "Present_Case_Status"),
+    filterable = FALSE,
+    # we enable filtering only on Branch/Product below
     defaultExpanded = FALSE,
-    theme = reactable::reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
+    height = "calc(100vh - 150px)",
+    theme = reactable::reactableTheme(
+      style = list(fontFamily = "IDLC, sans-serif"),
+      footerStyle = list(
+        fontWeight = 700,
+        background = "#EEF2F8",
+        color = "#203764",
+        borderTop = "2px solid #203764"
+      )
+    ), 
     columns = list(
-      SuitType = reactable::colDef(name = "Nature of Suit", minWidth = 270),
-      Present_Case_Status = reactable::colDef(name = "Present Case Status", minWidth = 250),
+      SuitType = reactable::colDef(
+        name = "Nature of Suit",
+        grouped = JS("function(cellInfo) { return cellInfo.value }"),
+        footer = "Total"
+      ),
+      Present_Case_Status = reactable::colDef(
+        name = "Present Case Status",
+        minWidth = 220,
+        grouped = JS("function(cellInfo) { return cellInfo.value }")
+      ),
       
-      Cases         = reactable::colDef(name = "Cases", aggregate = "sum"),
-      ActiveCases   = reactable::colDef(name = "Active", aggregate = "sum"),
-      SuitValue     = reactable::colDef(name = "Suit Value", aggregate = "sum", aggregated = money_cell, cell = money_cell),
-      Receivable    = reactable::colDef(name = "Receivable", aggregate = "sum", aggregated = money_cell, cell = money_cell),
-      OverdueAmount = reactable::colDef(name = "Overdue", aggregate = "sum", aggregated = money_cell, cell = money_cell),
-      Aging         = reactable::colDef(name = "Aging (Avg.)", aggregate = "mean", aggregated = aging_cell, cell = aging_cell),
+      Cases         = reactable::colDef(
+        name = "Cases",
+        aggregate = "sum",
+        footer = reactable::JS("
+          function(colInfo) {
+            var t = colInfo.data.reduce(function(a, r){ return a + (r['Cases'] || 0); }, 0);
+            return t.toLocaleString('en-IN');
+          }
+        ")
+      ),
+      SuitValue     = reactable::colDef(
+        name = "Suit Value",
+        aggregate = "sum",
+        aggregated = money_cell,
+        cell = money_cell,
+        footer = reactable::JS("
+          function(colInfo) {
+            var t = colInfo.data.reduce(function(a, r){ return a + (r['SuitValue'] || 0); }, 0);
+            return fmtLakhCr(t);
+          }
+        ")
+      ),
+      Receivable    = reactable::colDef(
+        name = "Receivable",
+        aggregate = "sum",
+        aggregated = money_cell,
+        cell = money_cell,
+        footer = reactable::JS("
+          function(colInfo) {
+            var t = colInfo.data.reduce(function(a, r){ return a + (r['Receivable'] || 0); }, 0);
+            return fmtLakhCr(t);
+          }
+        ")
+      ),
+      OverdueAmount = reactable::colDef(
+        name = "Overdue",
+        aggregate = "sum",
+        aggregated = money_cell,
+        cell = money_cell,
+        footer = reactable::JS("
+          function(colInfo) {
+            var t = colInfo.data.reduce(function(a, r){ return a + (r['OverdueAmount'] || 0); }, 0);
+            return fmtLakhCr(t);
+          }
+        ")
+      ),
+      Aging         = reactable::colDef(
+        name = "Aging (Avg.)",
+        aggregate = "mean",
+        aggregated = aging_cell,
+        cell = aging_cell,
+        footer = reactable::JS("
+          function(colInfo) {
+            var num = 0, den = 0;
+            colInfo.data.forEach(function(r) {
+              var a = r['Aging'], n = r['Cases'] || 0;
+              if (a != null && !isNaN(a) && n > 0) {
+                num += Math.abs(a) * n;
+                den += n;
+              }
+            });
+            if (!den) return '\u2014';
+            return Math.round(num / den) + ' Days';
+          }
+        ")
+      ),
       
       # Branch / Product: shown as filter rows via custom dropdowns, but the
       # column body itself hidden (we don't want them as visible columns).
       Branch = reactable::colDef(
-        show = FALSE, filterable = TRUE,
+        show = FALSE,
+        filterable = TRUE,
         filterInput = make_select_filter("Branch"),
         filterMethod = exact_filter
       ),
       Product = reactable::colDef(
-        show = FALSE, filterable = TRUE,
+        show = FALSE,
+        filterable = TRUE,
         filterInput = make_select_filter("Product"),
-        filterMethod = exact_filter
+        filterMethod = array_filter
+      ),
+      LitigationStatus = reactable::colDef(
+        show = FALSE,
+        filterable = TRUE,
+        filterInput = make_select_filter("LitigationStatus"),
+        filterMethod = array_filter
+      ),
+      in_this_month = colDef(show = FALSE),
+      in_next_month = colDef(show = FALSE),
+      upcoming = colDef(
+        show = FALSE,
+        filterable = TRUE,
+        filterInput = make_select_filter("upcoming"),
+        filterMethod = JS("
+          function(rows, columnId, filterValue) {
+            if (!filterValue) return rows;
+            // Month buckets use date-derived flags, not labels -- so a
+            // 'Next 5 Working Days' row is counted in whichever month its
+            // hearing date actually falls in.
+            if (filterValue === 'This Month') {
+              return rows.filter(function(row) { return row.values['in_this_month'] === true; });
+            }
+            if (filterValue === 'Next Month') {
+              return rows.filter(function(row) { return row.values['in_next_month'] === true; });
+            }
+            return rows.filter(function(row) {
+              return String(row.values[columnId]) === String(filterValue);
+            });
+          }
+        ")
       )
     ),
     bordered = TRUE,
@@ -939,34 +1143,101 @@ render_summary <- function(data_all) {
   
   # Because Branch/Product are hidden, their filter inputs won't render in the
   # header. So expose them as external dropdowns that drive the same filters.
-  branches <- sort(unique(sdat$Branch))
-  products <- c("SME", sort(setdiff(unique(sdat$Product), "SME")))
+  branches   <- sort(unique(sdat$Branch))
+  products   <- c("SME", sort(setdiff(unique(sdat$Product), "SME")))
+  lit_status <- sort(unique(sdat$LitigationStatus))
+  upcoming_labs   <- c("Today","Next 5 Working Days","This Month","Next Month","Later","Not Updated")
+  
+  
+  
+  
+  # checkbox group -> Reactable.setFilter with an array (undefined if all checked)
+  cb_group <- function(label, values, cb_class, fn_name, default_checked = NULL) {
+    htmltools::div(
+      class = "filter-group",          # <-- was summary-filter-group
+      htmltools::tags$label(label, class = "filter-label"),
+      htmltools::div(
+        class = "checkbox-list",
+        lapply(values, function(v) {
+          cb <- htmltools::tags$input(
+            type = "checkbox", value = v, class = cb_class,
+            onchange = paste0(fn_name, "()")
+          )
+          if (is.null(default_checked) || v %in% default_checked) {
+            cb$attribs$checked <- "checked"
+          }
+          htmltools::tags$label(cb, v)
+        })
+      )
+    )
+  }
   
   filter_bar <- htmltools::div(
-    class = "summary-filter-bar",
-    htmltools::div(class = "summary-filter-group",
-                   htmltools::tags$label("Branch", class = "filter-label"),
-                   htmltools::tags$select(
-                     class = "filter-select",
-                     onchange = "Reactable.setFilter('summary-table', 'Branch', this.value || undefined)",
-                     htmltools::tags$option(value = "", "All Branches"),
-                     lapply(branches, htmltools::tags$option)
-                   )
+    class = "filter-panel",
+    id = "summary-filter-panel",
+    # ---- Branch: dropdown ----
+    htmltools::div(
+      class = "filter-group",
+      htmltools::tags$label("Branch", class = "filter-label"),
+      htmltools::tags$select(
+        class = "filter-select",
+        onchange = "Reactable.setFilter('summary-table', 'Branch', this.value || undefined)",
+        htmltools::tags$option(value = "", "(All)"),
+        lapply(branches, htmltools::tags$option)
+      )
     ),
-    htmltools::div(class = "summary-filter-group",
-                   htmltools::tags$label("Product Category", class = "filter-label"),
-                   htmltools::tags$select(
-                     class = "filter-select",
-                     onchange = "Reactable.setFilter('summary-table', 'Product', this.value || undefined)",
-                     htmltools::tags$option(value = "", "All Products"),
-                     lapply(products, htmltools::tags$option)
-                   )
+    
+    cb_group("Product Category",  products,   "sum-product-cb", "updateSumProduct", default_checked = "SME"),
+    cb_group("Litigation Status", lit_status, "sum-status-cb",  "updateSumStatus"),
+    
+    htmltools::div(
+      class = "filter-group",
+      htmltools::tags$label("Upcoming Hearing", class = "filter-label"),
+      htmltools::tags$select(
+        class = "filter-select",
+        onchange = "Reactable.setFilter('summary-table', 'upcoming', this.value || undefined)",
+        htmltools::tags$option(value = "", "(All)"),
+        lapply(upcoming_labs, htmltools::tags$option)
+      )
+    ),
+    
+    htmltools::div(
+      class = "filter-links",
+      htmltools::tags$a("Clear all", onclick = "clearSummaryFilters()")
     )
   )
   
-  htmltools::tagList(
+  
+  table <- htmltools::tagList(
     htmltools::tags$script(htmltools::HTML(summary_lakh_js)),
-    filter_bar,
+    htmltools::tags$script(htmltools::HTML("
+      function sumApply(cbClass, colId) {
+        var boxes = document.querySelectorAll('.' + cbClass);
+        var selected = [], allChecked = true;
+        boxes.forEach(function(b) {
+          if (b.checked) selected.push(b.value); else allChecked = false;
+        });
+        Reactable.setFilter('summary-table', colId, allChecked ? undefined : selected);
+      }
+      function updateSumProduct() { sumApply('sum-product-cb', 'Product'); }
+      function updateSumStatus()  { sumApply('sum-status-cb',  'LitigationStatus'); }
+
+      function clearSummaryFilters() {
+        document.querySelectorAll('#summary-filter-panel select.filter-select').forEach(function(s){ s.value = ''; });
+        document.querySelectorAll('.sum-product-cb').forEach(function(b){ b.checked = (b.value === 'SME'); });
+        document.querySelectorAll('.sum-status-cb').forEach(function(b){ b.checked = true; });
+        Reactable.setFilter('summary-table', 'Branch', undefined);
+        Reactable.setFilter('summary-table', 'upcoming', undefined);
+        updateSumProduct(); updateSumStatus();
+      }
+
+      // apply the SME-only default once the table has mounted
+      (function initSummaryFilters() {
+        try { Reactable.setFilter('summary-table', 'Branch', undefined); }
+        catch (e) { setTimeout(initSummaryFilters, 100); return; }
+        updateSumProduct(); updateSumStatus();
+      })();
+    ")),
     htmltools::div(class = "summary-breakdown-wrap", tbl),
     htmltools::tags$script(htmltools::HTML("
       (function() {
@@ -1018,4 +1289,9 @@ render_summary <- function(data_all) {
       })();
     "))
     )
+  
+  list(
+    filter = filter_bar,
+    table = table
+  )
 }
