@@ -67,6 +67,11 @@ df <- df_raw %>%
       TRUE ~ NA_character_   # drops the single invalid code "3"
     ),
     marriage = factor(marriage, levels = c("Married", "Unmarried")),
+    familybreastchistory = case_when(
+      familybreastchistory == 1 ~ 1,
+      familybreastchistory == 2 ~ 0,
+      .default = NA_integer_
+    ) %>% factor(labels = c("No", "Yes")),
     
     # NOTE: income category labels in the raw data ("poor","middle","high","rich")
     # are mapped to BDT bands based on Table 1 frequencies matching exactly.
@@ -137,8 +142,8 @@ df <- df_raw %>%
     
     # 3-level recode used for Table 4 (Homeopathy / Surgeon / Others)
     first_doctor3 = case_when(
-      first_doctor == "Homeopathy practitioner" ~ "Homeopathy",
       first_doctor == "Surgeon"                 ~ "Surgeon",
+      first_doctor == "Homeopathy practitioner" ~ "Homeopathy",
       !is.na(first_doctor)                      ~ "Others",
       TRUE ~ NA_character_
     ),
@@ -192,7 +197,8 @@ df <- df_raw %>%
     first_symp        = "First symptom noticed",
     time_to_seek      = "Time to seek medical care",
     delayed_care      = "Delay in seeking medical care",
-    misinterp         = "Misinterpretation of symptoms as non-serious"
+    misinterp         = "Misinterpretation of symptoms as non-serious",
+    familybreastchistory  = "Family history of breast cancer"
   )
 
 # ── Comorbidities (Table 1) ──────────────────────────────────────────────────
@@ -212,7 +218,7 @@ comor_map <- c(
 df <- df %>%
   mutate(
     comor_first = str_trim(str_split_fixed(as.character(comor), ",", 2)[, 1]),
-    comorbidity = recode(comor_first, !!!comor_map, .default = NA_character_),
+    comorbidity = dplyr::recode(comor_first, !!!comor_map, .default = NA_character_),
     comorbidity = factor(comorbidity, levels = c("None", "Hypertension", "Diabetes mellitus",
                                                  "Asthma", "Other malignancy"))
   ) %>%
@@ -381,13 +387,54 @@ tbl3B_ft <- flextable(causesB) %>%
 
 
 
-# ── TABLE 4: Association between factors and delay in seeking care (n=206) ───
+# ══════════════════════════════════════════════════════════════════════════
+# TABLE 4 (updated) — adds test statistic, df, and effect size alongside p
+# per reviewer comment: "Alongside p-values, report the test statistic
+# (t/chi2/F as applicable) and name the statistical test in legends/text.
+# For chi2/ANOVA and similar tests, include degrees of freedom and an
+# appropriate effect size measure."
+#
+# All variables in Table 4 are categorical vs. delayed_care (categorical),
+# so the applicable test is Pearson's chi-squared test; the paired effect
+# size measure is Cramer's V. Requires: df_mod as built earlier in analysis.R
+# ══════════════════════════════════════════════════════════════════════════
+library(tidyverse)
+library(gtsummary)
+library(flextable)
 
-df_mod <- df 
+# ── Helper: chi-square statistic, df, and Cramer's V for one variable ──────
+# Uses the uncorrected Pearson chi-square (correct = FALSE) so the reported
+# statistic and the derived effect size are internally consistent; this is
+# noted explicitly in the table footnote below.
+df_mod <- df %>% 
+  mutate(
+    first_doctor3 = relevel(first_doctor3, ref = "Surgeon"),
+    familybreastchistory = relevel(familybreastchistory, ref = "No")
+  )
 
+
+chisq_effect_size <- function(data, variable, by) {
+  tab <- table(data[[variable]], data[[by]])
+  test <- suppressWarnings(chisq.test(tab, correct = FALSE))
+  n <- sum(tab)
+  k <- min(dim(tab))
+  cramers_v <- sqrt(unname(test$statistic) / (n * (k - 1)))
+  tibble(
+    variable      = variable,
+    stat_fmt      = sprintf("\u03c7\u00b2(%d) = %.2f", unname(test$parameter), unname(test$statistic)),
+    cramers_v_fmt = sprintf("%.2f", cramers_v)
+  )
+}
+
+table4_vars <- c("residence", "education_bin", "income_bin", "occupation_bin",
+                 "slt_cat", "stage_cat", "familybreastchistory", "first_doctor3")
+
+test_stats_tbl4 <- map_dfr(table4_vars, chisq_effect_size,
+                           data = df_mod, by = "delayed_care")
+
+# ── Build Table 4 (categorical summary + p-value, as before) ───────────────
 tbl4 <- df_mod %>%
-  select(residence, education_bin, income_bin, occupation_bin, slt_cat,
-         stage_cat, first_doctor3, delayed_care) %>%
+  select(all_of(table4_vars), delayed_care) %>%
   tbl_summary(
     by = delayed_care,
     statistic = list(all_categorical() ~ "{n} ({p}%)"),
@@ -399,10 +446,12 @@ tbl4 <- df_mod %>%
       occupation_bin   ~ "Occupation",
       slt_cat          ~ "Smokeless tobacco use (SLT)",
       stage_cat        ~ "Cancer stage",
+      familybreastchistory ~ "Family history of breast cancer",
       first_doctor3    ~ "First healthcare provider"
     )
   ) %>%
   add_p(test = list(all_categorical() ~ "chisq.test"),
+        test.args = all_categorical() ~ list(correct = FALSE),
         pvalue_fun = ~ style_pvalue(.x, digits = 3)) %>%
   bold_p(t = 0.05) %>%
   modify_header(
@@ -410,8 +459,31 @@ tbl4 <- df_mod %>%
     stat_2 ~ "**Delay**",
     stat_1 ~ "**No delay**"
   ) %>%
-  bold_labels() %>%
+  bold_labels()
+
+# ── Inject test statistic + effect size onto each variable's label row ─────
+tbl4 <- tbl4 %>%
+  modify_table_body(
+    ~ .x %>%
+      left_join(test_stats_tbl4, by = "variable")
+  ) %>%
+  modify_header(
+    stat_fmt      ~ "**Test statistic**",
+    cramers_v_fmt ~ "**Effect size (Cram\u00e9r's V)**"
+  ) %>%
+  modify_table_styling(
+    columns = c(stat_fmt, cramers_v_fmt),
+    rows = row_type == "label",
+    missing_symbol = ""
+  ) %>%
+  modify_footnote(
+    update = c(stat_fmt, p.value) ~ "Pearson's chi-squared test (without continuity correction)",
+    abbreviation = FALSE
+  ) %>%
   suppressMessages()
+
+# tbl4 now displays, per variable: Delay n(%) | No delay n(%) | Test statistic
+# (chi2, df) | Cramer's V | p-value — ready for as_flex_table() / export as before.
 
 
 # ── TABLE 5: Binary logistic regression — factors for delay in seeking care ──
@@ -429,18 +501,18 @@ df_mod <- df_mod %>%
 
 
 
-reg_vars <- c("stage_cat", "age_group", "residence", "education_bin", "income_bin",
-              "occupation_bin", "slt_cat", "first_doctor_bin") #, "misinterp")
+reg_vars <- c("age_group", "residence", "education_bin", "income_bin",
+              "occupation_bin", "slt_cat", "familybreastchistory", "first_doctor3") #, "misinterp")
 
 reg_labels <- list(
-  stage_cat        ~ "Cancer stage",
   age_group        ~ "Age",
   residence        ~ "Residence",
   education_bin    ~ "Education",
   income_bin       ~ "Monthly income",
   occupation_bin   ~ "Occupation",
   slt_cat          ~ "Smokeless tobacco use",
-  first_doctor_bin ~ "First healthcare provider"
+  familybreastchistory ~ "Family history of breast cancer",
+  first_doctor3    ~ "First healthcare provider"
   # misinterp        ~ "Misinterpretation of symptoms"
 )
 
@@ -460,8 +532,8 @@ tbl5_cor <- df_mod %>%
 
 # Multivariable (adjusted) model
 m_delay <- glm(
-  delayed_care_bin ~ stage_cat + age_group + residence + education_bin +
-    income_bin + occupation_bin + slt_cat + first_doctor_bin, # + misinterp,
+  delayed_care_bin ~ age_group + residence + education_bin +
+    income_bin + occupation_bin + slt_cat + familybreastchistory + first_doctor3, # + misinterp,
   data   = df_mod,
   family = binomial(link = "logit")
 )
@@ -688,7 +760,7 @@ term_labels <- tribble(
   "income_binLow income",       "Income: Low vs High",
   "occupation_binOthers",       "Occupation: Others vs Housewife",
   "slt_catYes",                 "Smokeless tobacco: Yes vs No",
-  "first_doctor_binHomeopathy", "First provider: Homeopathy vs Others"
+  "first_doctor3Homeopathy",    "First provider: Homeopathy vs Others"
 )
 
 # Reference-category rows: only needed for variables with > 2 levels
@@ -833,143 +905,3 @@ ggsave("graph/fig3_alluvial_pathway.png", fig_alluvial,
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# ══════════════════════════════════════════════════════════════════════════
-# TABLE 4 (updated) — adds test statistic, df, and effect size alongside p
-# per reviewer comment: "Alongside p-values, report the test statistic
-# (t/chi2/F as applicable) and name the statistical test in legends/text.
-# For chi2/ANOVA and similar tests, include degrees of freedom and an
-# appropriate effect size measure."
-#
-# All variables in Table 4 are categorical vs. delayed_care (categorical),
-# so the applicable test is Pearson's chi-squared test; the paired effect
-# size measure is Cramer's V. Requires: df_mod as built earlier in analysis.R
-# ══════════════════════════════════════════════════════════════════════════
-library(tidyverse)
-library(gtsummary)
-library(flextable)
-
-# ── Helper: chi-square statistic, df, and Cramer's V for one variable ──────
-# Uses the uncorrected Pearson chi-square (correct = FALSE) so the reported
-# statistic and the derived effect size are internally consistent; this is
-# noted explicitly in the table footnote below.
-chisq_effect_size <- function(data, variable, by) {
-  tab <- table(data[[variable]], data[[by]])
-  test <- suppressWarnings(chisq.test(tab, correct = FALSE))
-  n <- sum(tab)
-  k <- min(dim(tab))
-  cramers_v <- sqrt(unname(test$statistic) / (n * (k - 1)))
-  tibble(
-    variable      = variable,
-    stat_fmt      = sprintf("\u03c7\u00b2(%d) = %.2f", unname(test$parameter), unname(test$statistic)),
-    cramers_v_fmt = sprintf("%.2f", cramers_v)
-  )
-}
-
-table4_vars <- c("residence", "education_bin", "income_bin", "occupation_bin",
-                 "slt_cat", "stage_cat", "first_doctor3")
-
-test_stats_tbl4 <- map_dfr(table4_vars, chisq_effect_size,
-                           data = df_mod, by = "delayed_care")
-
-# ── Build Table 4 (categorical summary + p-value, as before) ───────────────
-tbl4 <- df_mod %>%
-  select(all_of(table4_vars), delayed_care) %>%
-  tbl_summary(
-    by = delayed_care,
-    statistic = list(all_categorical() ~ "{n} ({p}%)"),
-    missing = "no",
-    label = list(
-      residence        ~ "Residence",
-      education_bin    ~ "Education level",
-      income_bin       ~ "Monthly income (BDT)",
-      occupation_bin   ~ "Occupation",
-      slt_cat          ~ "Smokeless tobacco use (SLT)",
-      stage_cat        ~ "Cancer stage",
-      first_doctor3    ~ "First healthcare provider"
-    )
-  ) %>%
-  add_p(test = list(all_categorical() ~ "chisq.test"),
-        test.args = all_categorical() ~ list(correct = FALSE),
-        pvalue_fun = ~ style_pvalue(.x, digits = 3)) %>%
-  bold_p(t = 0.05) %>%
-  modify_header(
-    label  ~ "**Variable**",
-    stat_2 ~ "**Delay**",
-    stat_1 ~ "**No delay**"
-  ) %>%
-  bold_labels()
-
-# ── Inject test statistic + effect size onto each variable's label row ─────
-tbl4 <- tbl4 %>%
-  modify_table_body(
-    ~ .x %>%
-      left_join(test_stats_tbl4, by = "variable")
-  ) %>%
-  modify_header(
-    stat_fmt      ~ "**Test statistic**",
-    cramers_v_fmt ~ "**Effect size (Cram\u00e9r's V)**"
-  ) %>%
-  modify_table_styling(
-    columns = c(stat_fmt, cramers_v_fmt),
-    rows = row_type == "label",
-    missing_symbol = ""
-  ) %>%
-  modify_footnote(
-    update = c(stat_fmt, p.value) ~ "Pearson's chi-squared test (without continuity correction)",
-    abbreviation = FALSE
-  ) %>%
-  suppressMessages()
-
-# tbl4 now displays, per variable: Delay n(%) | No delay n(%) | Test statistic
-# (chi2, df) | Cramer's V | p-value — ready for as_flex_table() / export as before.
-
-
-
-
-df %>% select(all_of(table4_vars), delayed_care) %>% is.na() %>% colSums() %>% View
-
-
-df %>% nrow()
