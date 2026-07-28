@@ -1,7 +1,26 @@
+library(flexdashboard)
+library(dplyr)
+library(DT)
+library(reactable)
+library(htmltools)
+library(jsonlite)
+
+require(tidyverse)
+require(readxl)
+require(lubridate)
+require(openxlsx)
+require(glue)
+
+library(DBI)
+library(odbc)
+
+library(crosstalk)
+library(bizdays)
+
 # Load the config configuration object
 cfg <- config::get()
 
-# ── DB Connection ─────────────────────────────────────────────────────────────
+# ?????? DB Connection ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 con <- DBI::dbConnect(odbc::odbc(),
                       Driver   = cfg$DB_DRIVER,
                       Server   = cfg$DB_SERVER,
@@ -26,8 +45,10 @@ query <- paste0(
       NULLIF(l.[Law Firm], '') AS [Law Firm],
       NULLIF(NULLIF(l.[Court No],'N/A'), '') AS [Court No],
       NULLIF(l.[Next Hearing Date], '') AS [Next Hearing Date],
+      NULLIF(l.[Last Hearing Date], '') AS [Last Hearing Date],
       NULLIF(NULLIF(l.[Cheque Number], 'N/A'), '') AS [Cheque Number],
-      l.RMName,
+      l.Plaintiff,
+      l.PlaintiffCIF,
       NULLIF(l.Litigation_Receivable, '') AS Litigation_Receivable,
       l.URPA,
       NULLIF(a.MONTHSOVERDUE, '') AS MOD,
@@ -45,44 +66,13 @@ query <- paste0(
 )
 
 
-data <- dbGetQuery(con,query)
-
-history <- dbGetQuery(con,
-    paste0(
-      "WITH ranked AS (
-          SELECT
-              caseid,
-              HearingDate,
-              CaseStatus,
-              MakeDate,
-              ROW_NUMBER() OVER (
-                  PARTITION BY caseid, HearingDate, CaseStatus
-                  ORDER BY MakeDate DESC
-              ) AS rn
-          FROM [dbo].[AnalyticsLitigationAccountHearing]
-      )
-      SELECT caseid, HearingDate, CaseStatus, MakeDate
-      FROM ranked
-      WHERE rn = 1
-      ORDER BY caseid, HearingDate DESC, MakeDate DESC;"
-    ))
-
-
-history <- history %>%
-  select(
-    CaseID = caseid,
-    hearing_date = HearingDate,
-    case_status = CaseStatus,
-    MakeDate
-  )
-
-
 # End of the current work week: the upcoming Thursday (or today if today IS Thursday).
 # wday(): Sunday=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6, Sat=7
 Validation <- tbl(con, DBI::Id(schema = "SME", table = "Holiday")) %>% collect()
 BD_Calender <- create.calendar(name = "BD", holidays = Validation$Date, weekdays = c("friday", "saturday"))
 report_date <- dbGetQuery(con,"SELECT MAX([ReportPreparationDate]) dt FROM [dbo].[AnalyticsLitigationAccount]") %>% pull(dt)
 report_date <- as.Date(bizdays::add.bizdays(report_date, -1, "BD"))
+
 
 
 today_date <- Sys.Date()
@@ -93,7 +83,7 @@ next5_end <- as.Date(bizdays::add.bizdays(today_date, 5, "BD"))
 month_end      <- lubridate::ceiling_date(today_date, "month") - lubridate::days(1)
 next_month_end <- lubridate::ceiling_date(today_date %m+% months(1), "month") - lubridate::days(1)
 
-data <- data %>%
+data <- dbGetQuery(con,query) %>%
   distinct(CaseID, .keep_all = TRUE) %>% 
   mutate(
     PRODUCT_CATEGORY_LABEL = ifelse(PRODUCT_CATEGORY == "SME", "SME", "Other"),
@@ -115,6 +105,21 @@ data <- data %>%
       `Nature of Suit` == "Artha Rin Aine Execution (ARAE)" ~  "ARAE",
       .default = "Other"
     ),
+    Aging = round(time_length(interval(
+      `Suit Filing Date`,
+      case_when(
+        is.na(`Last Hearing Date`) ~ as.Date(NA),
+        LitigationStatus == "Active"   ~ report_date,
+        LitigationStatus == "InActive" ~ `Last Hearing Date`
+      )
+    ), "day")),
+    aging_status = round(time_length(interval(
+      `Last Hearing Date`,
+      case_when(
+        LitigationStatus == "Active"   ~ report_date,
+        LitigationStatus == "InActive" ~ as.Date(NA)
+      )
+    ), "day"))
   ) %>% 
   select(-.nhd) %>% 
   filter(SuitType != "Other")
@@ -123,12 +128,71 @@ data <- data %>%
 
 
 
-rm(query, Validation, BD_Calender)
+
+history <- dbGetQuery(con,
+                      paste0(
+                        "WITH ranked AS (
+          SELECT
+              caseid AS CaseID,
+              HearingDate AS hearing_date,
+              CaseStatus AS case_status,
+              MakeDate,
+              ROW_NUMBER() OVER (
+                  PARTITION BY caseid, HearingDate, CaseStatus
+                  ORDER BY MakeDate DESC
+              ) AS rn
+          FROM [dbo].[AnalyticsLitigationAccountHearing]
+      ),
+      case_data AS(
+        SELECT
+          CaseID,
+          LitigationStatus
+        FROM [dbo].[AnalyticsLitigationAccount]
+        WHERE [ReportPreparationDate] = (SELECT MAX([ReportPreparationDate]) FROM [dbo].[AnalyticsLitigationAccount])
+      )
+      
+      SELECT r.CaseID, r.hearing_date, r.case_status, r.MakeDate, c.LitigationStatus
+      FROM ranked r
+      LEFT JOIN case_data c
+        ON r.CaseID = c.CaseID
+      WHERE r.rn = 1
+      ORDER BY r.CaseID, r.hearing_date DESC, r.MakeDate DESC;"
+                      ))
+
+
+
+history <- history %>%
+  group_by(CaseID) %>%
+  mutate(
+    next_hearing = lag(hearing_date),
+    aging = round(time_length(interval(
+      hearing_date,
+      case_when(
+        is.na(next_hearing) & LitigationStatus == "Active"   ~ report_date,
+        is.na(next_hearing) & LitigationStatus == "InActive" ~ as.Date(NA),
+        .default = next_hearing
+      )
+    ), "day")),
+    r_num = row_number()
+  ) %>%
+  ungroup() 
+
+
+history %>% 
+  filter(r_num == 1) %>% 
+  select(CaseID, aging, LitigationStatus)
+
+
+
+
+
 
 rm(query, Validation, BD_Calender)
 
+rm(query, Validation, BD_Calender)
 
-save.image("data.RDS")
+
+# save.image("data.RDS")
 
 
 # ============================================================================
@@ -240,6 +304,8 @@ build_details_data <- function(data_all, history_all) {
         fmt_val(r$`Suit Filing Date`),
         fmt_val(r$`Law Firm`),
         fmt_val(r$`Court No`),
+        fmt_val(r$Plaintiff),
+        fmt_val(r$PlaintiffCIF),
         fmt_val(r$`Next Hearing Date`),
         fmt_val(r$`Cheque Number`),
         fmt_money(r$Litigation_Receivable),
@@ -249,7 +315,6 @@ build_details_data <- function(data_all, history_all) {
       acc = if (active) "card-active" else "card-inactive",
       # Account Info values
       ai = c(
-        fmt_val(r$RMName),
         fmt_val(r$PRODUCT_CATEGORY),
         fmt_money(r$URPA),
         fmt_money(r$OVERDUE_AMOUNT),
@@ -264,18 +329,12 @@ build_details_data <- function(data_all, history_all) {
   })
   
   hist2 <- history_all %>%
-    arrange(CaseID, desc(hearing_date)) %>%
-    group_by(CaseID) %>%
-    mutate(
-      next_hearing = lag(hearing_date),
-      aging = round(time_length(interval(hearing_date, next_hearing), "day"))
-    ) %>%
-    ungroup() %>%
     mutate(
       d  = format(hearing_date, "%d-%b-%Y"),
       sc = status_pill_class(case_status),
       ac = vapply(aging, aging_pill_class, character(1))
-    )
+    ) %>% 
+    select(-MakeDate, -LitigationStatus, -next_hearing, -r_num)
   
   history_by_case <- lapply(split(hist2, hist2$CaseID), function(h) {
     lapply(seq_len(nrow(h)), function(i) list(
@@ -529,7 +588,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
     htmltools::tags$div(
       class = "filter-panel",
       
-      htmltools::tags$a("⬇ Download CSV", class = "download-btn",
+      htmltools::tags$a("??? Download CSV", class = "download-btn",
                         onclick = paste0("downloadFiltered('",table_id, "', 'litigation_",suffix,".csv')")),
       
       htmltools::tags$div(
@@ -662,7 +721,13 @@ render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
       "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF", "PRODUCT_CATEGORY_LABEL", "ClientName", "upcoming", "in_this_month", "in_next_month"
     ))),
     elementId = table_id,
-    theme = reactableTheme(style = list(fontFamily = "IDLC, sans-serif")),
+    theme = reactableTheme(
+      style = list(fontFamily = "IDLC, sans-serif"),
+      tableStyle = list(
+        borderRadius = "10px",
+        border = "1px solid #e3e7ee"
+      )
+    ),
     groupBy = c("name_cif", "AccountNumber"),
     columns = list(
       name_cif = colDef(
@@ -878,7 +943,8 @@ build_summary_data <- function(data_all) {
       SuitValue     = suppressWarnings(as.numeric(`Suit Value`)),
       Receivable    = suppressWarnings(as.numeric(Litigation_Receivable)),
       OverdueAmount = suppressWarnings(as.numeric(OVERDUE_AMOUNT)),
-      Aging         = suppressWarnings(as.numeric(Aging))
+      Aging         = suppressWarnings(as.numeric(Aging)),
+      aging_status  = suppressWarnings(as.numeric(aging_status))
     ) %>%
     group_by(
       Branch,
@@ -895,12 +961,22 @@ build_summary_data <- function(data_all) {
       SuitValue     = sum(SuitValue, na.rm = TRUE),
       Receivable    = sum(Receivable, na.rm = TRUE),
       OverdueAmount = sum(OverdueAmount, na.rm = TRUE),
-      Aging         = mean(Aging, na.rm = TRUE),
+      Aging_val         = mean(Aging, na.rm = TRUE),
+      Aging_min         = if (all(is.na(Aging))) NA_real_ else min(Aging, na.rm = TRUE),
+      Aging_max         = if (all(is.na(Aging))) NA_real_ else max(Aging, na.rm = TRUE),
+      aging_status_val  = mean(aging_status, na.rm = TRUE),
+      aging_status_min  = if (all(is.na(aging_status))) NA_real_ else min(aging_status, na.rm = TRUE),
+      aging_status_max  = if (all(is.na(aging_status))) NA_real_ else max(aging_status, na.rm = TRUE),
       .groups = "drop"
     ) %>%
     mutate(
       dplyr::across(c(SuitValue, Receivable, OverdueAmount), ~tidyr::replace_na(., 0)),
-      Aging = ifelse(is.nan(Aging), NA_real_, Aging)
+      Aging_val = ifelse(is.nan(Aging_val), NA_real_, Aging_val),
+      Aging_min = ifelse(is.nan(Aging_min), NA_real_, Aging_min),
+      Aging_max = ifelse(is.nan(Aging_max), NA_real_, Aging_max),
+      aging_status_val = ifelse(is.nan(aging_status_val), NA_real_, aging_status_val),
+      aging_status_min = ifelse(is.nan(aging_status_min), NA_real_, aging_status_min),
+      aging_status_max = ifelse(is.nan(aging_status_max), NA_real_, aging_status_max)
     ) %>%
     dplyr::left_join(rank_lookup, by = c("SuitType", "Present_Case_Status")) %>%
     dplyr::mutate(
@@ -916,7 +992,7 @@ build_summary_data <- function(data_all) {
     dplyr::select(-.status_rank, -.suit_rank)
 }
 
-# data_new <- build_summary_data(data)
+data_new <- build_summary_data(data)
 # 
 # 
 # suits <- c("Negotiable Instrument Act (NI Act)","Artha Rin Aine (ARA)","Artha Rin Aine Execution (ARAE)")
@@ -944,8 +1020,59 @@ summary_lakh_js <- "
 render_summary <- function(data_all) {
   sdat <- build_summary_data(data_all)
   
+  
+  
   money_cell <- reactable::JS("function(ci){ return ci.value==null||isNaN(ci.value) ? '\u2014' : fmtLakhCr(ci.value); }")
-  aging_cell <- reactable::JS("function(ci){ return ci.value==null||isNaN(ci.value) ? '\u2014' : Math.round(Math.abs(ci.value)) + ' Days'; }")
+  aging_cell <- function(col){
+    reactable::JS(paste0("
+    function(ci){ 
+      var mx = ci.row['",col,"_max']==null||isNaN(ci.row['",col,"_max']) ? '\u2014' : Math.round(Math.abs(ci.row['",col,"_max']));
+      var mn = ci.row['",col,"_min']==null||isNaN(ci.row['",col,"_min']) ? '\u2014' : Math.round(Math.abs(ci.row['",col,"_min']));
+      var vl = ci.value==null||isNaN(ci.value) ? '\u2014' : Math.round(Math.abs(ci.value));
+
+      return '<span style=\"color:#111\">' + vl + '</span></br>' +
+             '<span style=\"color:#111\">(</span>' +
+             '<span style=\"color:#1E7A3E\">' + mn + '</span>' +
+             '<span style=\"color:#111\">, </span>' +
+             '<span style=\"color:#B3261E\">' + mx + '</span>' +
+             '<span style=\"color:#111\">)</span>';
+    }
+  "))
+  }
+  aging_footer <- function(col){
+    reactable::JS(paste0("
+    function(colInfo){
+      var num = 0, den = 0;
+      var mins = [], maxs = [];
+      colInfo.data.forEach(function(r){
+        var val = r['",col,"_val'];
+        var n   = r['Cases'];
+        if (val != null && !isNaN(val) && n != null && !isNaN(n) && n > 0) {
+          num += Math.abs(val) * n;   // value and weight from the SAME row
+          den += n;
+        }
+        var mn = r['",col,"_min'];
+        if (mn != null && !isNaN(mn)) mins.push(Math.abs(mn));
+        var mx = r['",col,"_max'];
+        if (mx != null && !isNaN(mx)) maxs.push(Math.abs(mx));
+      });
+
+      if (!den && !mins.length && !maxs.length) return '\u2014';
+
+      var vl = den ? Math.round(num / den) : '\u2014';
+      var mn = mins.length ? Math.round(Math.min.apply(null, mins)) : '\u2014';
+      var mx = maxs.length ? Math.round(Math.max.apply(null, maxs)) : '\u2014';
+
+      return '<span style=\"color:#111\">' + vl + '</span></br>' +
+             '<span style=\"color:#111\">(</span>' +
+             '<span style=\"color:#1E7A3E\">' + mn + '</span>' +
+             '<span style=\"color:#111\">, </span>' +
+             '<span style=\"color:#B3261E\">' + mx + '</span>' +
+             '<span style=\"color:#111\">)</span>';
+    }
+  "))
+  }
+  
   
   # custom dropdown filter for a column: exact-match select of that column's values
   make_select_filter <- function(colId) {
@@ -999,9 +1126,14 @@ render_summary <- function(data_all) {
     filterable = FALSE,
     # we enable filtering only on Branch/Product below
     defaultExpanded = FALSE,
-    height = "calc(100vh - 150px)",
+    height = "calc(100vh - 180px)",
     theme = reactable::reactableTheme(
-      style = list(fontFamily = "IDLC, sans-serif"),
+      style = list(fontFamily = "IDLC, sans-serif", borderRadius = 10),
+      tableStyle = list(
+        borderRadius = "10px",
+        overflow = "hidden",
+        border = "1px solid #e3e7ee"
+      ),
       footerStyle = list(
         fontWeight = 700,
         background = "#EEF2F8",
@@ -1012,17 +1144,23 @@ render_summary <- function(data_all) {
     columns = list(
       SuitType = reactable::colDef(
         name = "Nature of Suit",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         grouped = JS("function(cellInfo) { return cellInfo.value }"),
         footer = "Total"
       ),
       Present_Case_Status = reactable::colDef(
         name = "Present Case Status",
-        minWidth = 220,
+        headerVAlign = "bottom",
+        vAlign = "center", 
+        minWidth = 200,
         grouped = JS("function(cellInfo) { return cellInfo.value }")
       ),
       
       Cases         = reactable::colDef(
         name = "Cases",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         aggregate = "sum",
         footer = reactable::JS("
           function(colInfo) {
@@ -1033,6 +1171,8 @@ render_summary <- function(data_all) {
       ),
       SuitValue     = reactable::colDef(
         name = "Suit Value",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         aggregate = "sum",
         aggregated = money_cell,
         cell = money_cell,
@@ -1045,6 +1185,8 @@ render_summary <- function(data_all) {
       ),
       Receivable    = reactable::colDef(
         name = "Receivable",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         aggregate = "sum",
         aggregated = money_cell,
         cell = money_cell,
@@ -1057,6 +1199,8 @@ render_summary <- function(data_all) {
       ),
       OverdueAmount = reactable::colDef(
         name = "Overdue",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         aggregate = "sum",
         aggregated = money_cell,
         cell = money_cell,
@@ -1067,26 +1211,33 @@ render_summary <- function(data_all) {
           }
         ")
       ),
-      Aging         = reactable::colDef(
+      Aging_val         = reactable::colDef(
         name = "Aging (Avg.)",
+        html = TRUE,
+        align = "center",
+        headerVAlign = "bottom",
+        vAlign = "center", 
         aggregate = "mean",
-        aggregated = aging_cell,
-        cell = aging_cell,
-        footer = reactable::JS("
-          function(colInfo) {
-            var num = 0, den = 0;
-            colInfo.data.forEach(function(r) {
-              var a = r['Aging'], n = r['Cases'] || 0;
-              if (a != null && !isNaN(a) && n > 0) {
-                num += Math.abs(a) * n;
-                den += n;
-              }
-            });
-            if (!den) return '\u2014';
-            return Math.round(num / den) + ' Days';
-          }
-        ")
+        aggregated = aging_cell("Aging"),
+        cell = aging_cell("Aging"),
+        footer = aging_footer("Aging")
       ),
+      aging_status_val     = reactable::colDef(
+        name = "Present Status Aging (Avg.)",
+        html = TRUE,
+        align = "center",
+        headerVAlign = "bottom",
+        vAlign = "center", 
+        aggregate = "mean",
+        aggregated = aging_cell("aging_status"),
+        cell = aging_cell("aging_status"),
+        footer = aging_footer("aging_status")
+      ),
+      Aging_max            = reactable::colDef(show = FALSE, aggregate = "max"), 
+      Aging_min            = reactable::colDef(show = FALSE, aggregate = "min"), 
+      aging_status_max     = reactable::colDef(show = FALSE, aggregate = "max"), 
+      aging_status_min     = reactable::colDef(show = FALSE, aggregate = "min"), 
+      
       
       # Branch / Product: shown as filter rows via custom dropdowns, but the
       # column body itself hidden (we don't want them as visible columns).
@@ -1133,6 +1284,14 @@ render_summary <- function(data_all) {
         ")
       )
     ),
+    rowStyle = JS("
+      function(rowInfo) {
+        if (!rowInfo) return {};
+        if (rowInfo.level === 0) return { backgroundColor: '#FFFFFF', fontWeight: '400' };
+        if (rowInfo.level === 1) return { backgroundColor: '#F9F9F9', fontWeight: '400' };
+        return { backgroundColor: '#F3F3F3' };
+      }
+    "),
     bordered = TRUE,
     highlight = TRUE,
     defaultPageSize = 25,
@@ -1238,7 +1397,32 @@ render_summary <- function(data_all) {
         updateSumProduct(); updateSumStatus();
       })();
     ")),
-    htmltools::div(class = "summary-breakdown-wrap", tbl),
+    htmltools::div(class = "summary-breakdown-wrap", tbl,
+                   htmltools::tags$div(
+                     class = "aging-legend",
+                     htmltools::tags$span(class = "aging-legend-title", "Aging:"),
+                     htmltools::tags$span(class = "aging-legend-item",
+                                          htmltools::tags$span(class = "aging-dot avg"),
+                                          "Average"
+                     ),
+                     htmltools::tags$span(class = "aging-legend-item",
+                                          htmltools::tags$span(class = "aging-dot min"),
+                                          "Minimum"
+                     ),
+                     htmltools::tags$span(class = "aging-legend-item",
+                                          htmltools::tags$span(class = "aging-dot max"),
+                                          "Maximum"
+                     ),
+                     htmltools::tags$span(class = "aging-legend-format",
+                                          "shown as ",
+                                          htmltools::tags$span(style = "color:#111; font-weight:600", "avg"),
+                                          " (",
+                                          htmltools::tags$span(style = "color:#1E7A3E; font-weight:600", "min"),
+                                          ", ",
+                                          htmltools::tags$span(style = "color:#B3261E; font-weight:600", "max"),
+                                          ")"
+                     )
+                   )),
     htmltools::tags$script(htmltools::HTML("
       (function() {
         function neutralize() {
@@ -1288,7 +1472,7 @@ render_summary <- function(data_all) {
         neutralize();
       })();
     "))
-    )
+  )
   
   list(
     filter = filter_bar,

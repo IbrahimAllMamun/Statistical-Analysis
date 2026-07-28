@@ -9,24 +9,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
-library(flexdashboard)
-library(dplyr)
-library(DT)
-library(reactable)
-library(htmltools)
-library(jsonlite)
 
-require(tidyverse)
-require(readxl)
-require(lubridate)
-require(openxlsx)
-require(glue)
-
-library(DBI)
-library(odbc)
-
-library(crosstalk)
-library(bizdays)
 
 
 
@@ -119,9 +102,9 @@ htmltools::tagList(
         }
       })();
 
-      var CI_LABELS = ['Nature of Suit','Suit Value','Suit Filing Date','Law Firm',
-        'Court No','Next Hearing Date','Cheque Number','Litigation Receivable','Present Case Status','Active Status'];
-      var AI_LABELS = ['RM Name', 'Product Category', 'URPA','Overdue Amount','Principal OD', 'Interest OD', 'MOD', 'LPI',
+      var CI_LABELS = ['Nature of Suit','Suit Value','Suit Filing Date','Law Firm','Court No','Plaintiff', 'PlaintiffCIF', 
+      'Next Hearing Date','Cheque Number','Litigation Receivable','Present Case Status','Active Status'];
+      var AI_LABELS = ['Product Category', 'URPA','Overdue Amount','Principal OD', 'Interest OD', 'MOD', 'LPI',
         'Net Excise Duty (Last Year)','Net Excise Duty (Current Year)'];
         
       window.CI_LABELS = CI_LABELS;
@@ -175,7 +158,28 @@ htmltools::tagList(
         var h = (window.historyByCase || {})[caseId] || [];
         if (!d) return '<div class=\"case-detail-panel\">No details available.</div>';
 
+        // indexes of the Plaintiff / PlaintiffCIF pair in CI_LABELS
+        var PLAINTIFF_IDX = CI_LABELS.indexOf('Plaintiff');
+        var PLAINTIFF_CIF_IDX = CI_LABELS.indexOf('PlaintiffCIF');
+
         var ci = CI_LABELS.map(function (lbl, i) {
+          // PlaintiffCIF is folded into the Plaintiff card -> skip its own card
+          if (i === PLAINTIFF_CIF_IDX) return '';
+
+          // Plaintiff card: value + CIF as a green badge
+          if (i === PLAINTIFF_IDX) {
+            var pName = d.ci[PLAINTIFF_IDX];
+            var pCif  = d.ci[PLAINTIFF_CIF_IDX];
+            var val = esc(pName) +
+              (pCif == null || String(pCif).trim() === ''
+                ? ''
+                : ' <span class=\"cif-badge\">' + esc(pCif) + '</span>');
+            return '<div class=\"case-detail-field\">' +
+                     '<div class=\"case-detail-label\">' + esc('Plaintiff') + '</div>' +
+                     '<div class=\"case-detail-value\">' + val + '</div>' +
+                   '</div>';
+          }
+
           var accent = null;
           if (i === CI_LABELS.length - 1) {
             accent = d.acc;                      // Active Status (last)
@@ -197,6 +201,8 @@ htmltools::tagList(
       };
     })();
   ")),
+
+  
 htmltools::tags$script(htmltools::HTML("
   // Explicit export layout: [Header, source, key]
   //   source 'main' -> column on the reactable row
@@ -209,25 +215,26 @@ htmltools::tags$script(htmltools::HTML("
     ['CaseID',                        'main', 'CaseID'],
     ['Branch',                        'main', 'Branch'],
     ['LitigationStatus',              'main', 'LitigationStatus'],
-    ['Product Category',              'ai',   1],
+    ['Product Category',              'ai',   0],
     ['Nature of Suit',                'ci',   0],
     ['Court No',                      'ci',   4],
+    ['Plaintiff',                     'ci',   5],
+    ['PlaintiffCIF',                  'ci',   6],
     ['Law Firm',                      'ci',   3],
-    ['Cheque Number',                 'ci',   6],
+    ['Cheque Number',                 'ci',   8],
     ['Suit Filing Date',              'ci',   2],
     ['Suit Value',                    'ci',   1],
-    ['Litigation Receivable',         'ci',   7],
-    ['Next Hearing Date',             'ci',   5],
-    ['Present Case Status',           'ci',   8],
-    ['RM Name',                       'ai',   0],
-    ['URPA',                          'ai',   2],
-    ['Overdue Amount',                'ai',   3],
-    ['Principal OD',                  'ai',   4],
-    ['Interest OD',                   'ai',   5],
-    ['MOD',                           'ai',   6],
-    ['LPI',                           'ai',   7],
-    ['Net Excise Duty (Last Year)',   'ai',   8],
-    ['Net Excise Duty (Current Year)','ai',   9]
+    ['Litigation Receivable',         'ci',   9],
+    ['Next Hearing Date',             'ci',   7],
+    ['Present Case Status',           'ci',   10],
+    ['URPA',                          'ai',   1],
+    ['Overdue Amount',                'ai',   2],
+    ['Principal OD',                  'ai',   3],
+    ['Interest OD',                   'ai',   4],
+    ['MOD',                           'ai',   5],
+    ['LPI',                           'ai',   6],
+    ['Net Excise Duty (Last Year)',   'ai',   7],
+    ['Net Excise Duty (Current Year)','ai',   8]
   ];
 
   function downloadFiltered(tableId, filename) {
@@ -389,6 +396,3 @@ render_case_table(data_arae, history, suit_arae, "arae-table")
 ```
 
 
-
-
-['Nature of Suit','Suit Value','Suit Filing Date','Court No','Next Hearing Date','Cheque Number','Litigation Receivable','Present Case Status','Active Status'];
