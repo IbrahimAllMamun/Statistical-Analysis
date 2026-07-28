@@ -107,10 +107,12 @@ g_overall <- ggsurvplot(
   conf.int      = TRUE,
   risk.table    = TRUE,
   surv.median.line = "hv",
-  xlab          = "Time since metastasis (months)",
-  ylab          = "Overall survival probability",
-  title         = "Overall survival",
+  xlab          = "Time (months)",
+  ylab          = "Survival Probability",
+  title         = "",
   palette       = "#2a78d6",
+  legend.title  = "",
+  legend.labs   = "",
   ggtheme       = theme_bw(base_size = 12),
   risk.table.height = 0.25
 )

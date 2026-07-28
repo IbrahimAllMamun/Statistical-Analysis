@@ -402,7 +402,8 @@ print(doc, target = "doc/table3_mortality_association.docx")
 data <- data %>% mutate(
   status2 = ifelse(cs == "Death", 1, 0),
   os_time =   ifelse(status == 1, timdea, symptomtometastasis),
-  os_time = ifelse(os_time >24, 24, os_time)
+  os_time = ifelse(os_time >24, 24, os_time),
+  delayrx = fct_relevel(delayrx, "No")
 )
 
 vars <- c("age_grp", "grading", "subtype", "mburden", "Lung", "Liver", "delayrx", "skip")
@@ -474,5 +475,21 @@ print(doc, target = "doc/table4_cox_regression.docx")
 
 
 
+data %>% 
+  # select(os_time, status2 , age_grp , grading , subtype , mburden , Lung , Liver , delayrx , skip) %>% 
+  is.na() %>% 
+  colSums() %>% 
+  as.data.frame() -> na_val
 
+na_val <- na_val %>% 
+  mutate(vars = rownames(na_val), .before = 1)
+  
+rownames(na_val) <- NULL
+colnames(na_val) <- c("Vars", "NAs")
 
+table5 <- gt(na_val %>% filter(NAs>1))
+
+doc <- na_val %>% filter(NAs>1) %>% body_add_table(read_docx(), .)
+print(doc, target = "doc/table5_na_tab.docx")
+
+write_sav(data, "data.sav")
