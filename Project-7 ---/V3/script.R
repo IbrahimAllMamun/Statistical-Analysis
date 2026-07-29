@@ -493,3 +493,12 @@ doc <- na_val %>% filter(NAs>1) %>% body_add_table(read_docx(), .)
 print(doc, target = "doc/table5_na_tab.docx")
 
 write_sav(data, "data.sav")
+
+
+
+
+data_full <- read_sav("Data/Metastatic breast cancer study_new dataset.sav")
+
+
+
+write.xlsx(data, "Data_full.xlsx")
