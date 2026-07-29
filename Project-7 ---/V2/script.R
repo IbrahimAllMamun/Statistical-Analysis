@@ -615,3 +615,9 @@ if (length(km_panels) > 0) {
 }
 
 message("\n=== All outputs saved to output_docs/ ===")
+
+
+
+
+
+write.xlsx(data, "data/cancer_data.xlsx")
