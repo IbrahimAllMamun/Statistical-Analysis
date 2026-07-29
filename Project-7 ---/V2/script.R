@@ -55,26 +55,26 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
     Multiple_site   = ifelse(str_detect(sitemetastasis, "\\b7\\b"), 1, 0) %>% factor(labels = c("No", "Yes")),
     
     # ── Receptor status ────────────────────────────────────
-    ER = ER %>% labelled::unlabelled(),
+    ER = ER %>% zap_labels(),
     ER = case_when(
       ER == "1" ~ 1,
       ER == "2" ~ 2,
-      .default  = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
-    
-    PR = PR %>% labelled::unlabelled(),
+      .default  = NA
+    ) %>% factor(labels = c("Positive", "Negative")),
+
+    PR = PR %>% zap_labels(),
     PR = case_when(
       PR == "1" ~ 1,
       PR == "2" ~ 2,
-      .default  = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
-    
-    her2 = her2 %>% labelled::unlabelled(),
+      .default  = NA
+    ) %>% factor(labels = c("Positive", "Negative")),
+
+    her2 = her2 %>% zap_labels(),
     her2 = case_when(
       her2 == "1" ~ 1,
       her2 == "2" ~ 2,
-      .default    = 3
-    ) %>% factor(labels = c("Positive", "Negative", "Unknown")),
+      .default    = NA
+    ) %>% factor(labels = c("Positive", "Negative")),
     
     # ── De novo / Recurrent flags ───────────────────────
     denovometastasis = denovometastasis %>% labelled::unlabelled(),
@@ -130,12 +130,12 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
     ) %>% factor(labels = c("1 site", "2-3 sites", ">3 sites")),
     
     # ── Treatment delay & response ─────────────────────────
-    delayrx = delayrx %>% labelled::unlabelled(),
+    delayrx = delayrx %>% zap_labels(),
     delayrx = case_when(
       delayrx == "1" ~ 1,
       delayrx == "2" ~ 2,
-      .default = 3
-    ) %>% factor(labels = c("Yes", "No", "Unknown")),
+      .default = NA
+    ) %>% factor(labels = c("Yes", "No")),
     
     symptomaticresponse = symptomaticresponse %>% labelled::unlabelled(),
     symptomaticresponse = case_when(
@@ -145,24 +145,24 @@ read_sav("Data/Metastatic breast cancer study_new dataset.sav") %>%
     ) %>% factor(labels = c("Adequate", "Inadequate")),
     
     # ── Radiological response ──────────────────────────────
-    radiologivcalresponse = radiologivcalresponse %>% labelled::unlabelled(),
+    radiologivcalresponse = radiologivcalresponse %>% zap_labels(),
     radiologivcalresponse = case_when(
       radiologivcalresponse == "1" ~ 1,
       radiologivcalresponse == "2" ~ 2,
       radiologivcalresponse == "3" ~ 3,
       radiologivcalresponse == "4" ~ 4,
-      .default = 5
+      .default = NA
     ) %>% factor(labels = c("Stable", "Progressive disease",
-                            "Partial response", "Complete response", "Unknown")),
+                            "Partial response", "Complete response")),
     
     # ── Tumour grade ───────────────────────────────────────
-    grading = grading %>% labelled::unlabelled(),
+    grading = grading %>% zap_labels(),
     grading = case_when(
       grading == "1" ~ 1,
       grading == "2" ~ 2,
       grading == "3" ~ 3,
-      .default = 4
-    ) %>% factor(labels = c("Grade 1", "Grade 2", "Grade 3", "Unknown")),
+      .default = NA
+    ) %>% factor(labels = c("Grade 1", "Grade 2", "Grade 3")),
     
     # ── Surgery ────────────────────────────────────────────
     surgery = surgery %>% labelled::unlabelled(),
