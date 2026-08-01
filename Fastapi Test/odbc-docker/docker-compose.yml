@@ -1,0 +1,40 @@
+# ODBC server (Microsoft SQL Server 2022) + one-shot R exporter, all via Docker.
+#
+#   Start the server:   docker compose up -d sqlserver
+#   Export the tables:  docker compose run --rm rexport
+#   (then run load_to_sql.py on the host to create the DB and load the tables)
+
+services:
+  # ---- The ODBC server ----------------------------------------------------
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: idlc-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "${DB_PORT}:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q \"SELECT 1\" || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # ---- One-shot R job: load data.RDS and export the tables to CSV ---------
+  # Real R is required because data.RDS is a save.image() workspace that also
+  # contains non-table objects (a live DB connection, functions) which the
+  # Python RDS readers cannot parse.
+  rexport:
+    image: r-base:latest
+    profiles: ["tools"]
+    working_dir: /work
+    volumes:
+      - ..:/work
+    command: ["Rscript", "/work/odbc-docker/export_rds.R", "/work/data.RDS", "/work/odbc-docker/export"]
+
+volumes:
+  mssql-data:

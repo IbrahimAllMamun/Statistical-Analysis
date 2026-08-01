@@ -1,0 +1,246 @@
+# ============================================================
+# Metastatic Breast Cancer (V3) - Tables from imputed data
+# Data source: Data/cancer_data_imputed.Farhana.xlsx
+# ------------------------------------------------------------
+# Reproduces V3's four tables (patient/disease characteristics,
+# treatment & disease-course details, mortality association, and
+# univariate + multivariate Cox regression) using Farhana's fully
+# imputed dataset, and writes ALL of them into a single Word file:
+#
+#   doc/all_tables_farhana.docx
+#
+# The xlsx already carries the derived analysis columns (as text
+# labels); raw-coded columns (family history, stage, histology)
+# lost their SPSS labels on export, so they are re-labelled here
+# from the original coding scheme.
+# ============================================================
+
+library(readxl)
+library(dplyr)
+library(stringr)
+library(forcats)
+library(gtsummary)
+library(survival)
+library(flextable)
+library(officer)
+
+# ----------------------------------------------------------
+# 0.  Load & clean
+# ----------------------------------------------------------
+raw <- read_excel("Data/cancer_data_imputed.Farhana.xlsx")
+
+yn <- function(x) factor(str_to_title(as.character(x)), levels = c("No", "Yes"))
+
+data <- raw %>%
+  mutate(
+    # ── demographics ──
+    age_grp = factor(age_grp, levels = c("<35", "35-45", "45-55", "55+")),
+    parity  = case_when(totalpg == 0 ~ "Nulliparous",
+                        totalpg >= 1 ~ "Parous") %>% factor(),
+    family_hist = case_when(familybreastchistory == 1 ~ "Yes",
+                            familybreastchistory == 2 ~ "No",
+                            .default = NA_character_) %>% factor(levels = c("Yes", "No")),
+
+    # ── disease characteristics ──
+    stage = case_when(staging == 1 ~ "Stage 1", staging == 2 ~ "Stage 2",
+                      staging == 3 ~ "Stage 3", staging == 4 ~ "Stage 4",
+                      .default = NA_character_) %>%
+      factor(levels = c("Stage 1", "Stage 2", "Stage 3", "Stage 4")),
+    histology = case_when(
+      histologycal == 1 ~ "Duct cell carcinoma",
+      histologycal == 2 ~ "Infiltrating duct cell carcinoma",
+      histologycal == 3 ~ "Lobular cell carcinoma",
+      histologycal == 4 ~ "Infiltrating adenocarcinoma",
+      histologycal == 5 ~ "Invasive carcinoma",
+      .default = NA_character_) %>% factor(),
+
+    subtype = factor(clinical_subtype,
+                     levels = c("HR+/HER2+", "HR+/HER2-", "HR-/HER2+", "HR-/HER2-")),
+    grading = factor(grading, levels = c("Grade 1", "Grade 2", "Grade 3")),
+
+    # ── receptors (normalise case, for treatment-uptake narrative) ──
+    ER   = factor(str_to_title(ER),   levels = c("Positive", "Negative")),
+    PR   = factor(str_to_title(PR),   levels = c("Positive", "Negative")),
+    her2 = factor(str_to_title(her2), levels = c("Positive", "Negative")),
+
+    # ── metastasis sites (already No/Yes) ──
+    Lung = yn(Lung), Liver = yn(Liver), Brain = yn(Brain),
+    Bone = yn(Bone), Opposite_breast = yn(opposite_breast),
+
+    # ── metastatic burden (clean ">3*" variants) ──
+    mburden = case_when(
+      str_detect(mburden, "^>3")  ~ ">3 sites",
+      str_detect(mburden, "^2-3") ~ "2-3 sites",
+      str_detect(mburden, "^1")   ~ "1 site",
+      .default = NA_character_) %>% factor(levels = c("1 site", "2-3 sites", ">3 sites")),
+
+    # ── treatments (already No/Yes) ──
+    Chemotherapy     = yn(Chemotherapy),
+    Hormone_Therapy  = yn(Hormone_Therapy),
+    Targeted_Therapy = yn(Targeted_Therapy),
+    Zoledronic_Acid  = yn(Zoledronic_Acid),
+
+    # ── disease course ──
+    surgery = factor(surgery, levels = c("BCS", "Mastectomy")),
+    recume  = factor(str_to_title(recume), levels = c("Yes", "No")),
+    denovo  = factor(str_to_title(denovometastasis), levels = c("Yes", "No")),
+    cs      = factor(cs, levels = c("Alive with disease", "Disease free", "Death")),
+
+    # ── treatment delay / adherence ──
+    delayrx = factor(str_to_title(delayrx), levels = c("No", "Yes")),
+    skip    = factor(skip, levels = c("Non Adherent", "Adherent")),
+
+    # ── survival outcome (os_time already computed & capped at 24 mo) ──
+    status2 = as.numeric(cs == "Death"),                 # event indicator for Cox
+    status  = factor(as.numeric(status), levels = c(0, 1),
+                     labels = c("Alive", "Death")),       # labelled, for Table 3
+    os_time = as.numeric(os_time)
+  )
+
+# ============================================================
+# TABLE 1 - Patient and disease characteristics
+# ============================================================
+table1 <- data %>%
+  select(age_grp, parity, family_hist, stage, subtype,
+         histology, grading, Lung, Liver, Brain, Bone, Opposite_breast) %>%
+  tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd})",
+                     all_categorical() ~ "{n} ({p}%)"),
+    digits  = all_continuous() ~ 2,
+    missing = "no",
+    label = list(
+      age_grp        ~ "Age (years)",
+      parity         ~ "Parity",
+      family_hist    ~ "Family history of breast cancer",
+      stage          ~ "Stage",
+      subtype        ~ "Molecular subtype",
+      histology      ~ "Histology",
+      grading        ~ "Grade",
+      Lung           ~ "Lung metastasis",
+      Liver          ~ "Liver metastasis",
+      Brain          ~ "Brain metastasis",
+      Bone           ~ "Bone metastasis",
+      Opposite_breast ~ "Opposite-breast metastasis"
+    )
+  ) %>%
+  bold_labels()
+
+# ============================================================
+# TABLE 2 - Treatment and disease-course details
+# ============================================================
+table2 <- data %>%
+  select(surgery, Chemotherapy, Hormone_Therapy, Targeted_Therapy, Zoledronic_Acid,
+         recume, denovo, mburden, cs) %>%
+  tbl_summary(
+    statistic = list(all_continuous() ~ "{mean} ({sd})",
+                     all_categorical() ~ "{n} ({p}%)"),
+    digits  = all_continuous() ~ 2,
+    missing = "no",
+    label = list(
+      surgery          ~ "Surgery",
+      Chemotherapy     ~ "Chemotherapy received",
+      Hormone_Therapy  ~ "Hormone therapy received",
+      Targeted_Therapy ~ "Targeted therapy received",
+      Zoledronic_Acid  ~ "Zoledronic acid received",
+      recume           ~ "Recurrent metastasis",
+      denovo           ~ "De novo metastatic disease",
+      mburden          ~ "Metastatic burden",
+      cs               ~ "Current disease status"
+    )
+  ) %>%
+  bold_labels()
+
+# Biomarker-directed treatment uptake (paper reports as narrative text)
+hr_pos_uptake <- data %>%
+  filter(ER == "Positive" | PR == "Positive") %>%
+  summarise(n = n(), received = sum(Hormone_Therapy == "Yes", na.rm = TRUE)) %>%
+  mutate(pct = round(100 * received / n, 1))
+her2_pos_uptake <- data %>%
+  filter(her2 == "Positive") %>%
+  summarise(n = n(), received = sum(Targeted_Therapy == "Yes", na.rm = TRUE)) %>%
+  mutate(pct = round(100 * received / n, 1))
+
+# ============================================================
+# TABLE 3 - Association with current vital status (mortality)
+# ============================================================
+table3 <- data %>%
+  select(status, grading, subtype, mburden, Lung, Liver, delayrx, skip) %>%
+  tbl_summary(
+    by = status,
+    statistic = list(all_continuous() ~ "{mean} ({sd})",
+                     all_categorical() ~ "{n} ({p}%)"),
+    digits  = all_continuous() ~ 2,
+    missing = "no",
+    label = list(
+      grading ~ "Tumor grade",
+      subtype ~ "Molecular subtype",
+      mburden ~ "Metastatic burden",
+      Lung    ~ "Lung metastasis",
+      Liver   ~ "Liver metastasis",
+      delayrx ~ "Delayed treatment",
+      skip    ~ "Skipped treatment"
+    )
+  ) %>%
+  add_p(test = list(all_categorical() ~ "fisher.test")) %>%
+  bold_labels() %>%
+  modify_spanning_header(all_stat_cols() ~ "**Current vital status**")
+
+# ============================================================
+# TABLE 4 - Univariate + Multivariate Cox regression (OS)
+# ============================================================
+vars <- c("age_grp", "grading", "subtype", "mburden", "Lung", "Liver", "delayrx", "skip")
+var_label <- list(
+  age_grp ~ "Age Group",   grading ~ "Tumor grade",
+  subtype ~ "Molecular subtype", mburden ~ "Metastatic burden",
+  Lung ~ "Lung metastasis", Liver ~ "Liver metastasis",
+  delayrx ~ "Delayed treatment", skip ~ "Skipped treatment"
+)
+names(var_label) <- vars
+
+tbl_list <- lapply(vars, function(v) {
+  fml <- as.formula(paste0("Surv(os_time, status2) ~ ", v))
+  coxph(fml, data = data) %>%
+    tbl_regression(exponentiate = TRUE, label = var_label[[v]]) %>%
+    bold_labels() %>% bold_p(t = 0.05)
+})
+tbl_uni <- tbl_stack(tbl_list)
+
+cox_multi <- coxph(
+  Surv(os_time, status2) ~ age_grp + grading + subtype + mburden + Lung + Liver + delayrx + skip,
+  data = data)
+tbl_multi <- tbl_regression(cox_multi, exponentiate = TRUE,
+                            label = list(
+                              age_grp ~ "Age Group", grading ~ "Tumor grade",
+                              subtype ~ "Molecular subtype", mburden ~ "Metastatic burden",
+                              Lung ~ "Lung metastasis", Liver ~ "Liver metastasis",
+                              delayrx ~ "Delayed treatment", skip ~ "Skipped treatment")) %>%
+  bold_labels() %>% bold_p(t = 0.05)
+
+table4 <- tbl_merge(tbls = list(tbl_uni, tbl_multi),
+                    tab_spanner = c("**Univariate analysis**", "**Multivariate analysis**"))
+
+# ============================================================
+# EXPORT - all four tables in ONE Word document
+# ============================================================
+uptake_hr   <- sprintf("Hormone-therapy uptake among HR+ cases: %d/%d (%.1f%%)",
+                       hr_pos_uptake$received, hr_pos_uptake$n, hr_pos_uptake$pct)
+uptake_her2 <- sprintf("Targeted-therapy uptake among HER2+ cases: %d/%d (%.1f%%)",
+                       her2_pos_uptake$received, her2_pos_uptake$n, her2_pos_uptake$pct)
+
+doc <- read_docx() %>%
+  body_add("Table 1. Patient and disease characteristics", style = "heading 1") %>%
+  body_add_flextable(table1 %>% as_flex_table() %>% autofit()) %>%
+  body_add("") %>%
+  body_add("Table 2. Treatment and disease-course details", style = "heading 1") %>%
+  body_add_flextable(table2 %>% as_flex_table() %>% autofit()) %>%
+  body_add(uptake_hr) %>%
+  body_add(uptake_her2) %>%
+  body_add("") %>%
+  body_add("Table 3. Association with current vital status", style = "heading 1") %>%
+  body_add_flextable(table3 %>% as_flex_table() %>% autofit()) %>%
+  body_add("") %>%
+  body_add("Table 4. Univariate and multivariate Cox regression (overall survival)", style = "heading 1") %>%
+  body_add_flextable(table4 %>% as_flex_table() %>% autofit())
+
+print(doc, target = "doc/all_tables_farhana.docx")
+message("Saved -> doc/all_tables_farhana.docx")

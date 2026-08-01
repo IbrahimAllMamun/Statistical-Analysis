@@ -1,0 +1,43 @@
+table	column	rclass
+data	AccountNumber	character
+data	ClientName	character
+data	CaseID	integer
+data	Branch	character
+data	LitigationStatus	character
+data	Nature of Suit	character
+data	CIF	character
+data	Present Case Status	character
+data	Aging	numeric
+data	Suit Filing Date	POSIXct|POSIXt
+data	Suit Value	numeric
+data	Law Firm	character
+data	Court No	character
+data	Next Hearing Date	POSIXct|POSIXt
+data	Last Hearing Date	POSIXct|POSIXt
+data	Cheque Number	character
+data	Plaintiff	character
+data	PlaintiffCIF	character
+data	Litigation_Receivable	numeric
+data	URPA	numeric
+data	MOD	integer
+data	OVERDUE_AMOUNT	numeric
+data	PRINCIPAL_OD	numeric
+data	INTEREST_OD	numeric
+data	LPI	numeric
+data	NetExciseDutyTillLastYear	numeric
+data	NetExciseDutyTillCurrentYear	numeric
+data	PRODUCT_CATEGORY	character
+data	PRODUCT_CATEGORY_LABEL	character
+data	upcoming	character
+data	in_this_month	logical
+data	in_next_month	logical
+data	SuitType	character
+data	aging_status	numeric
+history	CaseID	integer
+history	hearing_date	POSIXct|POSIXt
+history	case_status	character
+history	MakeDate	POSIXct|POSIXt
+history	LitigationStatus	character
+history	next_hearing	POSIXct|POSIXt
+history	aging	numeric
+history	r_num	integer
