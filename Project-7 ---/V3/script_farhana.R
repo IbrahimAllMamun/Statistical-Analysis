@@ -49,13 +49,18 @@ data <- raw %>%
     histology = case_when(
       histologycal == 1 ~ "Duct cell carcinoma",
       histologycal == 2 ~ "Infiltrating duct cell carcinoma",
-      histologycal == 3 ~ "Lobular cell carcinoma",
-      histologycal == 4 ~ "Infiltrating adenocarcinoma",
-      histologycal == 5 ~ "Invasive carcinoma",
-      .default = NA_character_) %>% factor(),
+      .default = "Others") %>% factor(),
 
-    subtype = factor(clinical_subtype,
-                     levels = c("HR+/HER2+", "HR+/HER2-", "HR-/HER2+", "HR-/HER2-")),
+    # NB: map straight to the display labels. Going via numeric codes and then
+    # factor(levels = <strings>) silently turns every row into NA, because
+    # `levels` selects existing values rather than renaming them.
+    subtype = case_when(
+      clinical_subtype == "HR+/HER2+" ~ "HR+/HER2+",
+      clinical_subtype == "HR+/HER2-" ~ "HR+/HER2-",
+      clinical_subtype == "HR-/HER2+" ~ "HR-/HER2+",
+      .default = "Tripple Negative"
+    ) %>%
+      factor(levels = c("HR+/HER2+", "HR+/HER2-", "HR-/HER2+", "Tripple Negative")),
     grading = factor(grading, levels = c("Grade 1", "Grade 2", "Grade 3")),
 
     # ── receptors (normalise case, for treatment-uptake narrative) ──
@@ -82,8 +87,6 @@ data <- raw %>%
 
     # ── disease course ──
     surgery = factor(surgery, levels = c("BCS", "Mastectomy")),
-    recume  = factor(str_to_title(recume), levels = c("Yes", "No")),
-    denovo  = factor(str_to_title(denovometastasis), levels = c("Yes", "No")),
     cs      = factor(cs, levels = c("Alive with disease", "Disease free", "Death")),
 
     # ── treatment delay / adherence ──
@@ -92,16 +95,17 @@ data <- raw %>%
 
     # ── survival outcome (os_time already computed & capped at 24 mo) ──
     status2 = as.numeric(cs == "Death"),                 # event indicator for Cox
-    status  = factor(as.numeric(status), levels = c(0, 1),
-                     labels = c("Alive", "Death")),       # labelled, for Table 3
-    os_time = as.numeric(os_time)
+    status  = ifelse(cs=="Death", 1, 0) %>% factor(labels = c("Alive", "Death")),       # labelled, for Table 3
+    os_time = as.numeric(os_time),
+    menopause = ifelse(is.na(ageofmenopause), 0, 1) %>%
+      factor(levels = c(0, 1), labels = c("No", "Yes"))   # labels renames; levels would blank it
   )
 
 # ============================================================
 # TABLE 1 - Patient and disease characteristics
 # ============================================================
 table1 <- data %>%
-  select(age_grp, parity, family_hist, stage, subtype,
+  select(age_grp, Education, family_hist, stage, subtype, mbc_type, menopause,
          histology, grading, Lung, Liver, Brain, Bone, Opposite_breast) %>%
   tbl_summary(
     statistic = list(all_continuous() ~ "{mean} ({sd})",
@@ -110,10 +114,12 @@ table1 <- data %>%
     missing = "no",
     label = list(
       age_grp        ~ "Age (years)",
-      parity         ~ "Parity",
+      Education      ~ "Education",
       family_hist    ~ "Family history of breast cancer",
       stage          ~ "Stage",
       subtype        ~ "Molecular subtype",
+      mbc_type       ~ "MBC Type",
+      menopause      ~ "Menopause",
       histology      ~ "Histology",
       grading        ~ "Grade",
       Lung           ~ "Lung metastasis",
@@ -129,8 +135,7 @@ table1 <- data %>%
 # TABLE 2 - Treatment and disease-course details
 # ============================================================
 table2 <- data %>%
-  select(surgery, Chemotherapy, Hormone_Therapy, Targeted_Therapy, Zoledronic_Acid,
-         recume, denovo, mburden, cs) %>%
+  select(surgery, Chemotherapy, Hormone_Therapy, Targeted_Therapy, Zoledronic_Acid, mburden, cs) %>%
   tbl_summary(
     statistic = list(all_continuous() ~ "{mean} ({sd})",
                      all_categorical() ~ "{n} ({p}%)"),
@@ -142,8 +147,6 @@ table2 <- data %>%
       Hormone_Therapy  ~ "Hormone therapy received",
       Targeted_Therapy ~ "Targeted therapy received",
       Zoledronic_Acid  ~ "Zoledronic acid received",
-      recume           ~ "Recurrent metastasis",
-      denovo           ~ "De novo metastatic disease",
       mburden          ~ "Metastatic burden",
       cs               ~ "Current disease status"
     )
@@ -188,12 +191,18 @@ table3 <- data %>%
 # ============================================================
 # TABLE 4 - Univariate + Multivariate Cox regression (OS)
 # ============================================================
-vars <- c("age_grp", "grading", "subtype", "mburden", "Lung", "Liver", "delayrx", "skip")
+vars <- c("age_grp", "Education", "grading", "subtype", "menopause", "mburden", "Lung", "Liver", "delayrx", "skip")
 var_label <- list(
-  age_grp ~ "Age Group",   grading ~ "Tumor grade",
-  subtype ~ "Molecular subtype", mburden ~ "Metastatic burden",
-  Lung ~ "Lung metastasis", Liver ~ "Liver metastasis",
-  delayrx ~ "Delayed treatment", skip ~ "Skipped treatment"
+  age_grp   ~ "Age Group", 
+  Education ~ "Education", 
+  grading   ~ "Tumor grade",
+  subtype   ~ "Molecular subtype", 
+  menopause ~ "Menopause",
+  mburden   ~ "Metastatic burden",
+  Lung      ~ "Lung metastasis", 
+  Liver     ~ "Liver metastasis",
+  delayrx   ~ "Delayed treatment", 
+  skip      ~ "Skipped treatment"
 )
 names(var_label) <- vars
 
@@ -206,14 +215,20 @@ tbl_list <- lapply(vars, function(v) {
 tbl_uni <- tbl_stack(tbl_list)
 
 cox_multi <- coxph(
-  Surv(os_time, status2) ~ age_grp + grading + subtype + mburden + Lung + Liver + delayrx + skip,
+  Surv(os_time, status2) ~ age_grp + Education + grading + subtype + menopause + mburden + Lung + Liver + delayrx + skip,
   data = data)
 tbl_multi <- tbl_regression(cox_multi, exponentiate = TRUE,
                             label = list(
-                              age_grp ~ "Age Group", grading ~ "Tumor grade",
-                              subtype ~ "Molecular subtype", mburden ~ "Metastatic burden",
-                              Lung ~ "Lung metastasis", Liver ~ "Liver metastasis",
-                              delayrx ~ "Delayed treatment", skip ~ "Skipped treatment")) %>%
+                              age_grp   ~ "Age Group", 
+                              Education ~ "Education", 
+                              grading   ~ "Tumor grade",
+                              subtype   ~ "Molecular subtype", 
+                              menopause ~ "Menopause",
+                              mburden   ~ "Metastatic burden",
+                              Lung      ~ "Lung metastasis", 
+                              Liver     ~ "Liver metastasis",
+                              delayrx   ~ "Delayed treatment", 
+                              skip      ~ "Skipped treatment")) %>%
   bold_labels() %>% bold_p(t = 0.05)
 
 table4 <- tbl_merge(tbls = list(tbl_uni, tbl_multi),
