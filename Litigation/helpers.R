@@ -30,7 +30,14 @@ con <- DBI::dbConnect(odbc::odbc(),
                       Port     = cfg$DB_PORT)
 
 query <- paste0(
-  "SELECT
+  "
+  WITH latest_portfolio AS (
+    SELECT ACCOUNT_NUMBER, MONTHSOVERDUE
+    FROM SME.Portfolio
+    WHERE [Month] = (SELECT MAX([Month]) FROM SME.Portfolio)
+  )
+  
+  SELECT
       l.AccountNumber,
       l.ClientName,
       l.CaseID,
@@ -50,8 +57,14 @@ query <- paste0(
       l.Plaintiff,
       l.PlaintiffCIF,
       NULLIF(l.Litigation_Receivable, '') AS Litigation_Receivable,
+      a.STMCode,
+      a.STMName,
+      a.RMCode,
+      a.RMName,
+      a.MonitorByCode,
+      a.MonitorBy,
       l.URPA,
-      NULLIF(a.MONTHSOVERDUE, '') AS MOD,
+      COALESCE(NULLIF(p.MONTHSOVERDUE, ''), NULLIF(a.MONTHSOVERDUE, '')) AS [MOD],
       l.OVERDUE_AMOUNT,
       a.PRINCIPAL_OD,
       a.INTEREST_OD,
@@ -62,6 +75,8 @@ query <- paste0(
     FROM [dbo].[AnalyticsLitigationAccount] l
     LEFT JOIN [dbo].[AnalyticsCLAccount] a
         ON a.ACCOUNT_NUMBER = l.AccountNumber
+    LEFT JOIN latest_portfolio p
+        ON p.ACCOUNT_NUMBER = l.AccountNumber
     WHERE l.[ReportPreparationDate] = (SELECT MAX([ReportPreparationDate]) FROM [dbo].[AnalyticsLitigationAccount])"
 )
 
@@ -72,6 +87,7 @@ Validation <- tbl(con, DBI::Id(schema = "SME", table = "Holiday")) %>% collect()
 BD_Calender <- create.calendar(name = "BD", holidays = Validation$Date, weekdays = c("friday", "saturday"))
 report_date <- dbGetQuery(con,"SELECT MAX([ReportPreparationDate]) dt FROM [dbo].[AnalyticsLitigationAccount]") %>% pull(dt)
 report_date <- as.Date(bizdays::add.bizdays(report_date, -1, "BD"))
+
 
 
 
@@ -119,7 +135,8 @@ data <- dbGetQuery(con,query) %>%
         LitigationStatus == "Active"   ~ report_date,
         LitigationStatus == "InActive" ~ as.Date(NA)
       )
-    ), "day"))
+    ), "day")),
+    is_warrent = if_else(grepl("warrant", `Present Case Status`, ignore.case = TRUE), "Warrent", "Others")
   ) %>% 
   select(-.nhd) %>% 
   filter(SuitType != "Other")
@@ -384,6 +401,10 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
   
   upcoming_select_id   <- paste0("upcoming-select-", suffix)
   
+  warrent_group_id     <- paste0("warrent-filters-", suffix)
+  warrent_cb_class     <- paste0("warrent-cb-", suffix)
+  update_warrent_fn    <- paste0("updateWarrentFilter_", suffix)
+  
   
   clear_customer_fn    <- paste0("clearCustomerFilters__", suffix)
   clear_account_fn     <- paste0("clearAccountFilters__", suffix)
@@ -514,7 +535,20 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         {update_account_fn}();
         {update_clientname_fn}();
       }}
+      
+      function {update_warrent_fn}() {{
+        var box = document.querySelector('.{warrent_cb_class}');
+        if (box && box.checked) {{
+          Reactable.setFilter('{table_id}', 'is_warrent', ['Warrent']);
+        }} else {{
+          Reactable.setFilter('{table_id}', 'is_warrent', undefined);
+        }}
+        {update_cif_fn}();
+        {update_account_fn}();
+        {update_clientname_fn}();
+      }}
 
+      
       function {clear_all_fn}() {{
         console.log('All-Cleared')
         document.getElementById('{branch_select_id}').value = '';
@@ -524,7 +558,9 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         document.querySelectorAll('.{product_cb_class}').forEach(function(b) {{ b.checked = (b.value === 'SME'); }});
         document.getElementById('{clientname_input_id}').value = '';
         document.getElementById('{upcoming_select_id}').value = '';
+        document.querySelector('.{warrent_cb_class}').checked = false;
         
+
         Reactable.setFilter('{table_id}', 'Branch', undefined);
         Reactable.setFilter('{table_id}', 'CIF', undefined);
         Reactable.setFilter('{table_id}', 'AccountNumber', undefined);
@@ -532,12 +568,14 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
         Reactable.setFilter('{table_id}', 'PRODUCT_CATEGORY_LABEL', undefined);
         Reactable.setFilter('{table_id}', 'ClientName', undefined);
         Reactable.setFilter('{table_id}', 'upcoming', undefined);
+        Reactable.setFilter('{table_id}', 'is_warrent', undefined);
 
         {update_status_fn}();
         {update_product_fn}();
         {update_cif_fn}();
         {update_account_fn}();
         {update_clientname_fn}();
+        {update_warrent_fn}();
       }}
       
       
@@ -588,8 +626,11 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
     htmltools::tags$div(
       class = "filter-panel",
       
-      htmltools::tags$a("??? Download CSV", class = "download-btn",
-                        onclick = paste0("downloadFiltered('",table_id, "', 'litigation_",suffix,".csv')")),
+      htmltools::tags$a(
+        htmltools::tags$i(class = "fa fa-download", style = "margin-right:6px"),
+        " Download CSV", class = "download-btn",
+        onclick = paste0("downloadFiltered('",table_id, "', 'litigation_",suffix,".csv')")),
+      
       
       htmltools::tags$div(
         class = "filter-group",
@@ -668,6 +709,23 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
       
       htmltools::tags$div(
         class = "filter-group",
+        htmltools::tags$label("Warrant", class = "filter-label"),
+        htmltools::tags$div(
+          class = "checkbox-list",
+          id = warrent_group_id,
+          {
+            cb <- htmltools::tags$input(
+              type = "checkbox",
+              value = "Warrent",
+              class = warrent_cb_class,
+              onchange = paste0(update_warrent_fn, "()")
+            )
+            htmltools::tags$label(cb, "Warrant")   # unchecked by default
+          }
+        )
+      ),
+      htmltools::tags$div(
+        class = "filter-group",
         htmltools::tags$label("Product Category", class = "filter-label"),
         htmltools::tags$div(
           class = "checkbox-list",
@@ -718,7 +776,7 @@ render_filter_panel <- function(data_tab, table_id, suffix) {
 render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
   reactable(
     data_tab %>% select(all_of(c(
-      "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF", "PRODUCT_CATEGORY_LABEL", "ClientName", "upcoming", "in_this_month", "in_next_month"
+      "name_cif", "AccountNumber", "CaseID", "Branch", "LitigationStatus", "CIF", "PRODUCT_CATEGORY_LABEL", "ClientName", "upcoming", "in_this_month", "in_next_month", "is_warrent"
     ))),
     elementId = table_id,
     theme = reactableTheme(
@@ -802,6 +860,18 @@ render_case_table <- function(data_tab, history_tab, suit_label, table_id) {
           }
         ")
       ),
+      is_warrent = colDef(
+        show = FALSE,
+        filterMethod = JS("
+          function(rows, columnId, filterValue) {
+            if (!filterValue || filterValue.length === 0) return rows;
+            return rows.filter(function(row) {
+              return filterValue.includes(row.values[columnId]);
+            });
+          }
+        ")
+      ),
+      
       CIF = colDef(show = FALSE),
       ClientName = colDef(
         show = FALSE,
@@ -1479,3 +1549,117 @@ render_summary <- function(data_all) {
     table = table
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+# ---- Alert Section ----
+
+
+
+query <- paste0(
+  "SELECT
+      l.AccountNumber,
+      l.ClientName,
+      l.CaseID,
+      l.Branch,
+      l.LitigationStatus,
+      l.[Nature of Suit],
+      l.CIF,
+      l.[Present Case Status],
+      l.Aging,
+      NULLIF(l.[Suit Filing Date], '') AS [Suit Filing Date],
+      NULLIF(l.[Suit Value], '') AS [Suit Value],
+      NULLIF(l.[Law Firm], '') AS [Law Firm],
+      NULLIF(NULLIF(l.[Court No],'N/A'), '') AS [Court No],
+      NULLIF(l.[Next Hearing Date], '') AS [Next Hearing Date],
+      NULLIF(l.[Last Hearing Date], '') AS [Last Hearing Date],
+      NULLIF(NULLIF(l.[Cheque Number], 'N/A'), '') AS [Cheque Number],
+      l.Plaintiff,
+      l.PlaintiffCIF,
+      NULLIF(l.Litigation_Receivable, '') AS Litigation_Receivable,
+      a.STMCode,
+      a.STMName,
+      a.RMCode,
+      a.RMName,
+      a.MonitorByCode,
+      a.MonitorBy,
+      l.URPA,
+      NULLIF(a.MONTHSOVERDUE, '') AS MOD,
+      l.OVERDUE_AMOUNT,
+      a.PRINCIPAL_OD,
+      a.INTEREST_OD,
+      l.LPI,
+      l.NetExciseDutyTillLastYear,
+      l.NetExciseDutyTillCurrentYear,
+      l.PRODUCT_CATEGORY
+    FROM [dbo].[AnalyticsLitigationAccount] l
+    LEFT JOIN [dbo].[AnalyticsCLAccount] a
+        ON a.ACCOUNT_NUMBER = l.AccountNumber
+    WHERE l.[ReportPreparationDate] = (SELECT MAX([ReportPreparationDate]) FROM [dbo].[AnalyticsLitigationAccount])"
+)
+
+
+
+query_alert <- paste0("
+  WITH latest_portfolio AS (
+    SELECT ACCOUNT_NUMBER, MONTHSOVERDUE
+    FROM SME.Portfolio
+    WHERE [Month] = (SELECT MAX([Month]) FROM SME.Portfolio)
+  ),
+  tbl AS (
+    SELECT 
+      cl.CUSTOMER_NO AS CIF,
+      cl.CLIENTNAME AS ClientName,
+      cl.ACCOUNT_NUMBER AS AccountNumber,
+      cl.PRODUCT_CATEGORY,
+      cl.BranchName AS Branch,
+      cl.STMCode, cl.STMName,
+      cl.RMCode, cl.RMName,
+      cl.MonitorByCode, cl.MonitorBy,
+      cl.URPA,
+      COALESCE(NULLIF(p.MONTHSOVERDUE, ''), NULLIF(cl.MONTHSOVERDUE, '')) AS [MOD],
+      cl.OVERDUE_AMOUNT,
+      cl.PRINCIPAL_OD,
+      cl.INTEREST_OD,
+      cl.LPI,
+      cl.NetExciseDutyTillLastYear,
+      cl.NetExciseDutyTillCurrentYear
+    FROM [dbo].[AnalyticsCLAccount] cl
+    LEFT JOIN latest_portfolio p
+      ON cl.ACCOUNT_NUMBER = p.ACCOUNT_NUMBER
+  )
+  SELECT *
+  FROM tbl
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM [dbo].[AnalyticsLitigationAccount] la
+    WHERE la.AccountNumber = tbl.AccountNumber
+      AND la.[ReportPreparationDate] = (SELECT MAX([ReportPreparationDate]) FROM [dbo].[AnalyticsLitigationAccount])
+  )
+  AND [MOD] = 5;
+")
+
+
+# alert_data_ni <- dbGetQuery(con, query_alert) %>% 
+#   mutate(
+#     Plaintiff = NA,
+#     PlaintiffCIF = NA,
+#     alert_type = "NI"
+#   )
+# 
+# 
+# data %>% 
+#   filter()
+
+
+

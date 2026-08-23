@@ -45,13 +45,19 @@ payload_b64  <- gsub("[\r\n]", "", payload_b64)
 ```
 
 ```{r load-css, results='asis'}
-htmltools::tags$style(htmltools::HTML(paste(readLines("style.css"), collapse = "\n")))
+htmltools::tagList(
+  htmltools::tags$style(htmltools::HTML(paste(readLines("style.css"), collapse = "\n"))),
+  htmltools::tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css")
+)
+
 ```
 
 ```{r lazy-details-js, results='asis'}
 # Embed the per-case detail data ONCE, plus the JS that renders a panel
 # on-demand when a row is expanded. This keeps the file small (no pre-rendered
 # HTML for 25k cases) while producing the same panel the R version did.
+
+
 
 htmltools::tagList(
   htmltools::tags$script(htmltools::HTML(paste0(
