@@ -43,6 +43,7 @@ RAW_XLSX  <- "Data/data.xlsx"
 OUT_RDS   <- "Data/sepsis_clean.rds"
 OUT_CSV   <- "Data/sepsis_clean.csv"
 OUT_LOG   <- "doc/cleaning_log.txt"
+OUT_DOCX  <- "doc/all_tables.docx"
 
 dir.create("doc",   showWarnings = FALSE)
 dir.create("Graph", showWarnings = FALSE)
@@ -494,13 +495,24 @@ note("  severity covariate in the Table 2 / Table 3 regressions.")
 # ----------------------------------------------------------
 # 6.  Save
 # ----------------------------------------------------------
-saveRDS(clean, OUT_RDS)
-write.csv(clean, OUT_CSV, row.names = FALSE, na = "")
-writeLines(LOG, OUT_LOG)
+# A file left open in Excel / Word is locked on Windows.  That should not
+# abort the analysis half-way, so writes warn instead of erroring out.
+safe_write <- function(expr, path) {
+  tryCatch({
+    force(expr)
+    message("Saved -> ", path)
+    invisible(TRUE)
+  }, error = function(e) {
+    warning("COULD NOT WRITE ", path,
+            " - it is probably open in Excel or Word. Close it and re-run. (",
+            conditionMessage(e), ")", call. = FALSE, immediate. = TRUE)
+    invisible(FALSE)
+  })
+}
 
-message("\nSaved -> ", OUT_RDS)
-message("Saved -> ", OUT_CSV)
-message("Saved -> ", OUT_LOG)
+safe_write(saveRDS(clean, OUT_RDS), OUT_RDS)
+safe_write(write.csv(clean, OUT_CSV, row.names = FALSE, na = ""), OUT_CSV)
+safe_write(writeLines(LOG, OUT_LOG), OUT_LOG)
 
 
 # ============================================================
@@ -546,6 +558,11 @@ library(officer)
 theme_gtsummary_compact()
 set_flextable_defaults(font.size = 9, padding = 3)
 
+# Shared figure palette (Okabe-Ito, colour-blind safe). No red anywhere -
+# graph.R uses the same two-colour version for the outcome bar charts.
+PALETTE3   <- c("#0072B2", "#E69F00", "#009E73")   # blue / amber / green
+PALETTE_OS <- c(Survivor = "#0072B2", `Non-survivor` = "#E69F00")
+
 analysis <- clean %>% filter(analysis_set)
 note("")
 note("=== PART 2: tables built on ", nrow(analysis), " patients with a recorded outcome ===")
@@ -575,76 +592,127 @@ note("  Firth penalized likelihood is therefore used for Tables 2 and 3, and")
 note("  NEWS is left out of the adjustment set (it separates the groups too).")
 
 # ----------------------------------------------------------
-# TABLE 1 - Characteristics of patients enrolled in the study
+# TABLE 1 (a-e) - Characteristics of patients enrolled
 # ----------------------------------------------------------
-t1_labels <- list(
-  age_years   = "Age (years)",
-  sex         = "Sex",
-  src_respiratory = "Respiratory",
-  src_urinary     = "Urinary",
-  src_gi          = "Gastrointestinal",
-  src_cns         = "CNS",
-  src_skin        = "Skin / soft tissue",
-  src_other       = "Other",
-  news_day1   = "NEWS, day 1",
-  news_day3   = "NEWS, day 3",
-  news_day5   = "NEWS, day 5",
-  total_sofa  = "SOFA",
-  gcs_day0    = "GCS",
-  dm          = "Diabetes mellitus",
-  htn         = "Hypertension",
-  ihd         = "Ischaemic heart disease",
-  copd        = "COPD",
-  antimicrobial_started = "Antimicrobial therapy started",
-  oxygen_day0 = "Supplemental oxygen",
-  vasopressor = "Vasopressor",
-  creatinine  = "Creatinine (mg/dL)",
-  bilirubin   = "Total bilirubin (mg/dL)",
-  pf_ratio    = "PaO2/FiO2 (mmHg)",
-  alt         = "ALT (U/L)",
-  ast         = "AST (U/L)",
-  sodium      = "Sodium (mmol/L)",
-  potassium   = "Potassium (mmol/L)",
-  rbg         = "Random blood glucose (mmol/L)",
-  lactate     = "Lactate (mmol/L)",
-  anc_day1 = "Neutrophil, day 1", anc_day3 = "Neutrophil, day 3", anc_day5 = "Neutrophil, day 5",
-  alc_day1 = "Lymphocyte, day 1", alc_day3 = "Lymphocyte, day 3", alc_day5 = "Lymphocyte, day 5",
-  plt_day1 = "Platelet, day 1",   plt_day3 = "Platelet, day 3",   plt_day5 = "Platelet, day 5",
-  nlr_day1 = "NLR, day 1",   nlr_day3 = "NLR, day 3",   nlr_day5 = "NLR, day 5",
-  nlpr_day1 = "NLPR, day 1", nlpr_day3 = "NLPR, day 3", nlpr_day5 = "NLPR, day 5"
-)
+# The reference paper runs one long baseline table.  Here it is split into
+# five, one per variable domain, so each fits a page and can be placed next
+# to the text that discusses it.  Every panel keeps the same columns
+# (Overall / Survivor / Non-survivor / p) and the same denominators.
+#
+# CKD and chronic liver disease are absent in all patients and carry no
+# information, so they do not appear in 1a.
 
 # the paper reports creatinine / bilirubin / oxygenation index as mean (SD)
 # and everything else continuous as median (IQR)
 mean_sd_vars <- c("creatinine", "bilirubin", "pf_ratio")
+# scores with few distinct values that gtsummary would otherwise call
+# categorical, but which the paper reports as scores
+force_cont   <- c("gcs_day0", "total_sofa", "news_day1", "news_day3", "news_day5")
 
-table1 <- analysis %>%
-  select(outcome, all_of(names(t1_labels))) %>%
-  tbl_summary(
-    by = outcome,
-    statistic = list(
-      all_continuous()     ~ "{median} ({p25}-{p75})",
-      all_of(mean_sd_vars) ~ "{mean} ({sd})",
-      all_categorical()    ~ "{n} ({p}%)"
-    ),
-    # GCS takes only 7 distinct values, so gtsummary would guess "categorical";
-    # the paper reports it as a score, so force it continuous.
-    type    = list(gcs_day0 ~ "continuous", total_sofa ~ "continuous"),
-    digits  = list(all_continuous() ~ 2, all_categorical() ~ c(0, 1)),
-    missing = "no",
-    label   = t1_labels
-  ) %>%
-  add_overall(last = FALSE) %>%
-  add_p(
-    test = list(
-      all_continuous()     ~ "wilcox.test",
-      all_of(mean_sd_vars) ~ "t.test"
-    ),
-    pvalue_fun = label_style_pvalue(digits = 3)
-  ) %>%
-  bold_labels() %>%
-  bold_p(t = 0.05) %>%
-  modify_header(label = "**Characteristic**")
+t1_groups <- list(
+  "1a" = list(
+    title  = "Table 1a. Demographic characteristics and co-morbidities",
+    note   = "",
+    labels = list(
+      age_grp = "Age group (years)",
+      sex     = "Sex",
+      dm      = "Diabetes mellitus",
+      htn     = "Hypertension",
+      ihd     = "Ischaemic heart disease",
+      copd    = "COPD"
+    )
+  ),
+  "1b" = list(
+    title  = "Table 1b. Source of infection and clinical management",
+    note   = paste0("Source of infection is not mutually exclusive - two patients had two ",
+                    "sites recorded, so the site rows do not sum to N. Vasopressor use is ",
+                    "taken from a SOFA cardiovascular sub-score of 2 or more. "),
+    labels = list(
+      src_respiratory = "Respiratory",
+      src_urinary     = "Urinary",
+      src_gi          = "Gastrointestinal",
+      src_cns         = "CNS",
+      src_skin        = "Skin / soft tissue",
+      src_other       = "Other",
+      antimicrobial_started = "Antimicrobial therapy started",
+      oxygen_day0     = "Supplemental oxygen",
+      vasopressor     = "Vasopressor"
+    )
+  ),
+  "1c" = list(
+    title  = "Table 1c. Severity of illness scores",
+    note   = paste0("NEWS, national early warning score; SOFA, sequential organ failure ",
+                    "assessment; GCS, Glasgow coma scale. SOFA and GCS are day-0 values. "),
+    labels = list(
+      news_day1  = "NEWS, day 1",
+      news_day3  = "NEWS, day 3",
+      news_day5  = "NEWS, day 5",
+      total_sofa = "SOFA",
+      gcs_day0   = "GCS"
+    )
+  ),
+  "1d" = list(
+    title  = "Table 1d. Biochemical parameters",
+    note   = paste0("Creatinine, total bilirubin and PaO2/FiO2 are mean (SD) and compared by ",
+                    "t test, as in the reference paper; the rest are median (IQR). "),
+    labels = list(
+      creatinine = "Creatinine (mg/dL)",
+      bilirubin  = "Total bilirubin (mg/dL)",
+      pf_ratio   = "PaO2/FiO2 (mmHg)",
+      alt        = "ALT (U/L)",
+      ast        = "AST (U/L)",
+      sodium     = "Sodium (mmol/L)",
+      potassium  = "Potassium (mmol/L)",
+      rbg        = "Random blood glucose (mmol/L)",
+      lactate    = "Lactate (mmol/L)"
+    )
+  ),
+  "1e" = list(
+    title  = "Table 1e. Haematological parameters and derived ratios",
+    note   = paste0("Neutrophil, lymphocyte and platelet counts are 10^9/L. ",
+                    "NLR = neutrophil / lymphocyte; NLPR = NLR x 100 / platelet count. ",
+                    "Day-3 platelet count and NLPR are missing for two patients whose ",
+                    "recorded platelet value was implausible and was voided in cleaning. "),
+    labels = list(
+      anc_day1 = "Neutrophil, day 1", anc_day3 = "Neutrophil, day 3", anc_day5 = "Neutrophil, day 5",
+      alc_day1 = "Lymphocyte, day 1", alc_day3 = "Lymphocyte, day 3", alc_day5 = "Lymphocyte, day 5",
+      plt_day1 = "Platelet, day 1",   plt_day3 = "Platelet, day 3",   plt_day5 = "Platelet, day 5",
+      nlr_day1 = "NLR, day 1",   nlr_day3 = "NLR, day 3",   nlr_day5 = "NLR, day 5",
+      nlpr_day1 = "NLPR, day 1", nlpr_day3 = "NLPR, day 3", nlpr_day5 = "NLPR, day 5"
+    )
+  )
+)
+
+# any_of() rather than all_of(): each panel holds only some of these variables
+make_t1 <- function(labels) {
+  analysis %>%
+    select(outcome, all_of(names(labels))) %>%
+    tbl_summary(
+      by = outcome,
+      statistic = list(
+        all_continuous()     ~ "{median} ({p25}-{p75})",
+        any_of(mean_sd_vars) ~ "{mean} ({sd})",
+        all_categorical()    ~ "{n} ({p}%)"
+      ),
+      type    = list(any_of(force_cont) ~ "continuous"),
+      digits  = list(all_continuous() ~ 2, all_categorical() ~ c(0, 1)),
+      missing = "no",
+      label   = labels
+    ) %>%
+    add_overall(last = FALSE) %>%
+    add_p(
+      test = list(
+        all_continuous()     ~ "wilcox.test",
+        any_of(mean_sd_vars) ~ "t.test"
+      ),
+      pvalue_fun = label_style_pvalue(digits = 3)
+    ) %>%
+    bold_labels() %>%
+    bold_p(t = 0.05) %>%
+    modify_header(label = "**Characteristic**")
+}
+
+table1_list <- lapply(t1_groups, function(g) make_t1(g$labels))
 
 # ----------------------------------------------------------
 # TABLES 2 & 3 - Multivariable logistic regression (Firth)
@@ -655,13 +723,17 @@ mdat <- analysis %>%
   filter(!is.na(sex)) %>%
   mutate(sex = fct_relevel(sex, "Female"))
 
+# Age enters as the grouped variable, so each level gets its own row against
+# the <40 reference.  The 75+ cell holds only 3 patients, so that row is
+# estimable but wide - read it with the n in Table 1 alongside.
 term_labels <- c(
-  "nlr_day5"  = "NLR (d5)",
-  "nlpr_day5" = "NLPR (d5)",
-  "sexMale"   = "Sex (male gender)",
-  "age_years" = "Age (years)",
-  "total_sofa" = "SOFA",
-  "news_day1" = "NEWS (day 1)"
+  "nlr_day5"     = "NLR (d5)",
+  "nlpr_day5"    = "NLPR (d5)",
+  "sexMale"      = "Sex (male gender)",
+  "age_grp40-59" = "Age 40-59 y (vs <40)",
+  "age_grp60-74" = "Age 60-74 y (vs <40)",
+  "age_grp75+"   = "Age 75+ y (vs <40)",
+  "total_sofa"   = "SOFA"
 )
 
 # A profile-likelihood bound that ran off to infinity is shown as a bound,
@@ -669,9 +741,10 @@ term_labels <- c(
 ci_num <- function(x) ifelse(x > 1000, ">1000", ifelse(x < 0.001, "<0.001", sprintf("%.3f", x)))
 
 firth_table <- function(fit) {
-  keep <- names(coef(fit)) != "(Intercept)"
+  keep  <- names(coef(fit)) != "(Intercept)"
+  terms <- names(coef(fit))[keep]
   tibble(
-    Factor       = unname(term_labels[names(coef(fit))[keep]]),
+    Factor       = ifelse(is.na(term_labels[terms]), terms, unname(term_labels[terms])),
     `Odds ratio` = sprintf("%.3f", exp(coef(fit))[keep]),
     `95% CI`     = paste0(ci_num(exp(fit$ci.lower)[keep]), "-", ci_num(exp(fit$ci.upper)[keep])),
     P            = ifelse(fit$prob[keep] < 0.001, "<0.001", sprintf("%.3f", fit$prob[keep]))
@@ -681,9 +754,9 @@ firth_table <- function(fit) {
 FIT_CTL <- logistf.control(maxit = 1000)
 PL_CTL  <- logistpl.control(maxit = 1000)
 
-fit_nlr  <- logistf(death ~ nlr_day5  + sex + age_years + total_sofa,
+fit_nlr  <- logistf(death ~ nlr_day5  + sex + age_grp + total_sofa,
                     data = mdat, control = FIT_CTL, plcontrol = PL_CTL)
-fit_nlpr <- logistf(death ~ nlpr_day5 + sex + age_years + total_sofa,
+fit_nlpr <- logistf(death ~ nlpr_day5 + sex + age_grp + total_sofa,
                     data = mdat, control = FIT_CTL, plcontrol = PL_CTL)
 
 table2_df <- firth_table(fit_nlr)
@@ -735,9 +808,9 @@ roc_row <- function(score, outcome_bin, label) {
 
 # combined predictor: NLPR(d5) + age + SOFA, on the predicted-probability
 # scale.  Fitted by Firth for the same separation reason as Tables 2-3.
-fit_comb <- logistf(death ~ nlpr_day5 + age_years + total_sofa, data = analysis,
+fit_comb <- logistf(death ~ nlpr_day5 + age_grp + total_sofa, data = analysis,
                     control = FIT_CTL, plcontrol = PL_CTL)
-X_comb   <- model.matrix(~ nlpr_day5 + age_years + total_sofa, data = analysis)
+X_comb   <- model.matrix(~ nlpr_day5 + age_grp + total_sofa, data = analysis)
 analysis$pred_comb <- as.numeric(plogis(X_comb %*% coef(fit_comb)))
 
 table4_df <- bind_rows(
@@ -752,12 +825,14 @@ table4_df <- bind_rows(
 
 # the paper also quotes the NLPR value implied by the combined cut-off;
 # solve the fitted logit for NLPR holding age and SOFA at their medians
+# age now enters as a group, so the reference level (<40) contributes nothing
+# to the linear predictor and only SOFA needs holding at its median.
 p_star   <- as.numeric(table4_df$`Cut-off value`[table4_df$Parameter == "NLPR (d5) & age & SOFA"])
 b        <- coef(fit_comb)
-age_med  <- median(analysis$age_years,  na.rm = TRUE)
+age_ref  <- levels(analysis$age_grp)[1]
 sofa_med <- median(analysis$total_sofa, na.rm = TRUE)
 nlpr_at_cut <- (qlogis(p_star) - b[["(Intercept)"]] -
-                  b[["age_years"]] * age_med - b[["total_sofa"]] * sofa_med) / b[["nlpr_day5"]]
+                  b[["total_sofa"]] * sofa_med) / b[["nlpr_day5"]]
 
 table4 <- flextable(table4_df) %>%
   bold(part = "header") %>%
@@ -767,14 +842,15 @@ table4 <- flextable(table4_df) %>%
 # ----------------------------------------------------------
 # ROC curves (the paper's Figures 1 and 2)
 # ----------------------------------------------------------
-roc_png <- function(vars, labels, file, title) {
+# Titles are left off every figure - the caption in the manuscript carries them.
+roc_png <- function(vars, labels, file) {
   png(file, width = 6.5, height = 6, units = "in", res = 300)
   on.exit(dev.off(), add = TRUE)
-  cols <- c("#2166AC", "#B2182B", "#1B7837")
+  cols <- PALETTE3
   for (i in seq_along(vars)) {
     r <- pROC::roc(analysis$death, analysis[[vars[i]]], quiet = TRUE, direction = "<")
     pROC::plot.roc(r, add = i > 1, col = cols[i], lwd = 2,
-                   legacy.axes = TRUE, main = title,
+                   legacy.axes = TRUE, main = "",
                    xlab = "1 - Specificity", ylab = "Sensitivity")
   }
   aucs <- map_dbl(vars, ~ as.numeric(pROC::auc(pROC::roc(
@@ -784,31 +860,28 @@ roc_png <- function(vars, labels, file, title) {
 }
 roc_png(c("nlr_day1", "nlr_day3", "nlr_day5"),
         c("NLR day 1", "NLR day 3", "NLR day 5"),
-        "Graph/Fig1_ROC_NLR.png",  "ROC - neutrophil-to-lymphocyte ratio")
+        "Graph/Fig1_ROC_NLR.png")
 roc_png(c("nlpr_day1", "nlpr_day3", "nlpr_day5"),
         c("NLPR day 1", "NLPR day 3", "NLPR day 5"),
-        "Graph/Fig2_ROC_NLPR.png", "ROC - neutrophil-to-lymphocyte and platelet ratio")
+        "Graph/Fig2_ROC_NLPR.png")
 
 # ----------------------------------------------------------
 # EXPORT - all four tables in ONE Word document
 # ----------------------------------------------------------
 fx <- function(tbl) tbl %>% as_flex_table() %>% fontsize(size = 8, part = "all") %>% autofit()
 
-foot1 <- paste0(
-  "Values are median (IQR) or n (%); creatinine, total bilirubin and PaO2/FiO2 are mean (SD). ",
-  "P values: Mann-Whitney U test for median (IQR) rows, independent-samples t test for mean (SD) rows, ",
+# shared across the five Table 1 panels; each panel appends its own `note`
+foot1_common <- paste0(
+  "Values are median (IQR) or n (%). P values: Mann-Whitney U test for median (IQR) rows, ",
   "chi-square or Fisher exact test for categorical rows. ",
-  "Source of infection is not mutually exclusive (2 patients had two sites). ",
-  "Neutrophil, lymphocyte and platelet counts are 10^9/L. ",
-  "One patient with an unrecorded outcome and one with unrecorded sex are excluded from the relevant rows. ",
-  "NEWS, national early warning score; SOFA, sequential organ failure assessment; GCS, Glasgow coma scale; ",
-  "IQR, interquartile range; NLR, neutrophil-to-lymphocyte ratio; ",
-  "NLPR, neutrophil-to-lymphocyte and platelet ratio."
+  "One patient with an unrecorded outcome is excluded from every panel, and one with ",
+  "unrecorded sex from the sex row. IQR, interquartile range."
 )
 foot23 <- paste0(
   "Firth penalized-likelihood logistic regression with profile-likelihood confidence intervals, ",
   "used because NLPR (d5) separates the two outcome groups completely and ordinary maximum ",
-  "likelihood does not converge. Adjusted for sex, age and SOFA. The APACHE II term of the ",
+  "likelihood does not converge. Adjusted for sex, age group and SOFA, with age <40 years as the ",
+  "reference group. The APACHE II term of the ",
   "reference paper has no counterpart here: APACHE II was not recorded, and the NEWS score - the ",
   "available stand-in - also separates the outcome groups, which leaves every coefficient in the ",
   "model unidentifiable. A confidence bound shown as \">1000\" or \"<0.001\" is not estimable: the ",
@@ -819,22 +892,28 @@ foot4 <- paste0(
   "Cut-off is the Youden-optimal point. The AUC confidence interval and the test of AUC = 0.5 use ",
   "the DeLong method; where the AUC is exactly 1 that variance is zero and the equivalent exact ",
   "Mann-Whitney test is reported instead. The combined row is on the predicted-probability scale of a ",
-  "Firth logistic model containing NLPR (d5), age and SOFA; ",
-  sprintf("at that cut-off, holding age and SOFA at their medians (%g years, SOFA %g), the corresponding NLPR (d5) is %.2f. ",
-          age_med, sofa_med, nlpr_at_cut),
+  "Firth logistic model containing NLPR (d5), age group and SOFA; ",
+  sprintf("at that cut-off, for the %s year age group and SOFA at its median (%g), the corresponding NLPR (d5) is %.2f. ",
+          age_ref, sofa_med, nlpr_at_cut),
   "AUC, area under the ROC curve; CI, confidence interval."
 )
 
 small <- fp_text(font.size = 8, italic = TRUE)
 add_foot <- function(d, txt) body_add_fpar(d, fpar(ftext(txt, small)))
 
-doc <- read_docx() %>%
-  body_add(paste0("Table 1. Characteristics of patients enrolled in the study (N = ",
-                  nrow(analysis), ")"), style = "heading 1") %>%
-  body_add_flextable(fx(table1)) %>%
-  add_foot(foot1) %>%
-  body_add_break() %>%
+doc <- read_docx()
 
+# Tables 1a-1e, each on its own page
+for (k in names(t1_groups)) {
+  g <- t1_groups[[k]]
+  doc <- doc %>%
+    body_add(paste0(g$title, " (N = ", nrow(analysis), ")"), style = "heading 1") %>%
+    body_add_flextable(fx(table1_list[[k]])) %>%
+    add_foot(paste0(g$note, foot1_common)) %>%
+    body_add_break()
+}
+
+doc <- doc %>%
   body_add("Table 2. Multivariable logistic regression exploring the association of NLR (d5) with in-hospital mortality",
            style = "heading 1") %>%
   body_add_flextable(table2) %>%
@@ -852,7 +931,7 @@ doc <- read_docx() %>%
   body_add_flextable(table4) %>%
   add_foot(foot4)
 
-print(doc, target = "doc/all_tables.docx")
+safe_write(print(doc, target = OUT_DOCX), OUT_DOCX)
 
 # ----------------------------------------------------------
 # console summary
@@ -865,7 +944,6 @@ walk(capture.output(print(as.data.frame(table3_df), row.names = FALSE)), note)
 note("--- Table 4: ROC ---")
 walk(capture.output(print(as.data.frame(table4_df), row.names = FALSE)), note)
 
-writeLines(LOG, OUT_LOG)
-message("\nSaved -> doc/all_tables.docx")
+safe_write(writeLines(LOG, OUT_LOG), OUT_LOG)
 message("Saved -> Graph/Fig1_ROC_NLR.png")
 message("Saved -> Graph/Fig2_ROC_NLPR.png")

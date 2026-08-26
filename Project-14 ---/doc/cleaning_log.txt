@@ -1,18 +1,18 @@
-Rows read from 'Data Input': 103
+Rows read from 'Data Input': 102
 Enrolment dates repaired for an out-of-range year: 1
 Follow-up (days) range: 5 - 7  [fixed 5-7 day study window, NOT true hospital LOS]
 Implausible platelet counts (< 20 x10^9/L) set to NA:
-   row 73  plt_day3 = 7.45
-   row 98  plt_day3 = 6.03
+   row 72  plt_day3 = 7.45
+   row 97  plt_day3 = 6.03
 NLPR cells where the entered value disagrees with ANC/ALC/PLT by > 0.5: 9 (derived values are used throughout)
 Total SOFA recomputed from components; entered total disagreed in 11 rows and was missing in 1 row(s).
 Implausible ALT values (< 5 U/L) set to NA: 1
 
 --- cohort ---
-N cleaned            : 103
-Outcome recorded     : 102  (1 missing -> excluded from Tables 1-4)
-Survivors            : 76
-Non-survivors        : 26  (25.5% mortality)
+N cleaned            : 102
+Outcome recorded     : 101  (1 missing -> excluded from Tables 1-4)
+Survivors            : 75
+Non-survivors        : 26  (25.7% mortality)
 Sex missing          : 1
 
 --- missingness in the variables the four tables need ---
@@ -34,9 +34,9 @@ Sex missing          : 1
   nlpr_day1        0 (0.0%)
   anc_day3         0 (0.0%)
   alc_day3         0 (0.0%)
-  plt_day3         2 (1.9%)
+  plt_day3         2 (2.0%)
   nlr_day3         0 (0.0%)
-  nlpr_day3        2 (1.9%)
+  nlpr_day3        2 (2.0%)
   anc_day5         0 (0.0%)
   alc_day5         0 (0.0%)
   plt_day5         0 (0.0%)
@@ -46,7 +46,7 @@ Sex missing          : 1
 
 --- data-quality flags to keep in mind when reading the tables ---
   Age below the paper's 18-year inclusion floor : 1 patient(s) (youngest 14 y) - kept, flag for the client.
-  Serum lactate is exactly 0.5 in 70/103 rows - looks like an assay floor / placeholder, not a measurement.
+  Serum lactate is exactly 0.5 in 69/102 rows - looks like an assay floor / placeholder, not a measurement.
   Temperature column is labelled deg C but every value is 98-104,
      i.e. Fahrenheit -> kept as temp_f_day0, converted as temp_c_day0.
   Random blood glucose is labelled mg/dL but the values are mmol/L;
@@ -60,13 +60,13 @@ Sex missing          : 1
   NEWS score (day 1/3/5) is used in place of APACHE II as the
   severity covariate in the Table 2 / Table 3 regressions.
 
-=== PART 2: tables built on 102 patients with a recorded outcome ===
+=== PART 2: tables built on 101 patients with a recorded outcome ===
 
 --- range overlap between survivors and non-survivors ---
   nlr_day1    survivors 2.36 - 31.72     deaths 7.00 - 48.00     
-  nlr_day3    survivors 1.45 - 25.56     deaths 5.33 - 44.96     
-  nlr_day5    survivors 3.50 - 19.82     deaths 5.00 - 48.00     
-  nlpr_day1   survivors 5.19 - 17.62     deaths 3.75 - 25.00     
+  nlr_day3    survivors 2.36 - 25.56     deaths 5.33 - 44.96     
+  nlr_day5    survivors 3.99 - 19.82     deaths 5.00 - 48.00     
+  nlpr_day1   survivors 5.71 - 17.62     deaths 3.75 - 25.00     
   nlpr_day3   survivors 2.10 - 14.65     deaths 2.91 - 22.40     
   nlpr_day5   survivors 1.75 - 6.67      deaths 8.62 - 20.42     <-- COMPLETE SEPARATION
   news_day1   survivors 5.00 - 9.00      deaths 9.00 - 17.00     
@@ -78,31 +78,35 @@ Sex missing          : 1
   NEWS is left out of the adjustment set (it separates the groups too).
 
 --- Table 2: NLR(d5) model (Firth) ---
-            Factor Odds ratio       95% CI      P
-          NLR (d5)      1.707  1.336-2.629 <0.001
- Sex (male gender)      2.241 0.281-20.037  0.431
-       Age (years)      1.000  0.937-1.069  0.997
-              SOFA      3.999 1.945-14.372 <0.001
+               Factor Odds ratio        95% CI      P
+             NLR (d5)      1.649   1.303-2.559 <0.001
+    Sex (male gender)      2.466  0.293-23.687  0.392
+ Age 40-59 y (vs <40)      0.729   0.073-8.510  0.785
+ Age 60-74 y (vs <40)      0.627  0.023-12.288  0.750
+   Age 75+ y (vs <40)      1.944 <0.001-93.358  0.746
+                 SOFA      3.474  1.763-11.504 <0.001
 --- Table 3: NLPR(d5) model (Firth) ---
-            Factor Odds ratio        95% CI      P
-         NLPR (d5)      2.722  1.748-15.087 <0.001
- Sex (male gender)      1.766 0.004-707.316  0.774
-       Age (years)      0.982   0.773-1.094  0.756
-              SOFA      1.135   0.218->1000  0.824
+               Factor Odds ratio        95% CI      P
+            NLPR (d5)      2.372   1.654-8.554 <0.001
+    Sex (male gender)      1.927 0.016-357.937  0.706
+ Age 40-59 y (vs <40)      0.320 <0.001-74.898  0.574
+ Age 60-74 y (vs <40)      0.690 0.001-189.280  0.859
+   Age 75+ y (vs <40)      0.634 <0.001-89.469  0.858
+                 SOFA      1.151  0.268-20.919  0.816
 --- Table 4: ROC ---
               Parameter Cut-off value Specificity Sensitivity   AUC      95% CI
-               NLR (d1)        17.963       0.684       0.615 0.615 0.485-0.746
-               NLR (d3)        14.088       0.737       0.538 0.622 0.484-0.761
-               NLR (d5)        11.193       0.882       0.962 0.930 0.854-1.000
-              NLPR (d1)        14.228       0.921       0.192 0.464 0.323-0.604
-              NLPR (d3)         8.487       0.824       0.769 0.755 0.630-0.879
+               NLR (d1)        17.963       0.680       0.615 0.611 0.479-0.742
+               NLR (d3)        14.088       0.733       0.538 0.617 0.477-0.757
+               NLR (d5)        11.193       0.880       0.962 0.929 0.852-1.000
+              NLPR (d1)        14.228       0.920       0.192 0.458 0.317-0.599
+              NLPR (d3)         8.487       0.822       0.769 0.751 0.625-0.877
               NLPR (d5)         7.644       1.000       1.000 1.000 1.000-1.000
- NLPR (d5) & age & SOFA         0.460       1.000       1.000 1.000 1.000-1.000
+ NLPR (d5) & age & SOFA         0.545       1.000       1.000 1.000 1.000-1.000
       P
-  0.083
-  0.084
+  0.099
+  0.101
  <0.001
-  0.611
+  0.560
  <0.001
  <0.001
  <0.001
