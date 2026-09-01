@@ -86,7 +86,7 @@ data <- raw %>%
     Zoledronic_Acid  = yn(Zoledronic_Acid),
 
     # ── disease course ──
-    surgery = factor(surgery, levels = c("BCS", "Mastectomy")),
+    surgery = factor(surgery, levels = c("Mastectomy", "Lumpectomy", "Biopsy", "No Surgery")),
     cs      = factor(cs, levels = c("Alive with disease", "Disease free", "Death")),
 
     # ── treatment delay / adherence ──
@@ -167,7 +167,7 @@ her2_pos_uptake <- data %>%
 # TABLE 3 - Association with current vital status (mortality)
 # ============================================================
 table3 <- data %>%
-  select(status, grading, subtype, mburden, Lung, Liver, delayrx, skip) %>%
+  select(status, grading, subtype, mburden, Lung, Liver, Brain,Bone, delayrx, skip) %>%
   tbl_summary(
     by = status,
     statistic = list(all_continuous() ~ "{mean} ({sd})",
@@ -180,6 +180,8 @@ table3 <- data %>%
       mburden ~ "Metastatic burden",
       Lung    ~ "Lung metastasis",
       Liver   ~ "Liver metastasis",
+      Brain     ~ "Brain metastasis",
+      Bone      ~ "Bone metastasis",
       delayrx ~ "Delayed treatment",
       skip    ~ "Skipped treatment"
     )
@@ -191,7 +193,7 @@ table3 <- data %>%
 # ============================================================
 # TABLE 4 - Univariate + Multivariate Cox regression (OS)
 # ============================================================
-vars <- c("age_grp", "Education", "grading", "subtype", "menopause", "mburden", "Lung", "Liver", "delayrx", "skip")
+vars <- c("age_grp", "Education", "grading", "subtype", "menopause", "mburden", "Lung", "Liver", "Brain", "Bone", "delayrx", "skip")
 var_label <- list(
   age_grp   ~ "Age Group", 
   Education ~ "Education", 
@@ -201,6 +203,8 @@ var_label <- list(
   mburden   ~ "Metastatic burden",
   Lung      ~ "Lung metastasis", 
   Liver     ~ "Liver metastasis",
+  Brain     ~ "Brain metastasis",
+  Bone      ~ "Bone metastasis",
   delayrx   ~ "Delayed treatment", 
   skip      ~ "Skipped treatment"
 )
@@ -215,7 +219,7 @@ tbl_list <- lapply(vars, function(v) {
 tbl_uni <- tbl_stack(tbl_list)
 
 cox_multi <- coxph(
-  Surv(os_time, status2) ~ age_grp + Education + grading + subtype + menopause + mburden + Lung + Liver + delayrx + skip,
+  Surv(os_time, status2) ~ age_grp + Education + grading + subtype + menopause + mburden + Lung + Liver +  Brain + Bone + delayrx + skip,
   data = data)
 tbl_multi <- tbl_regression(cox_multi, exponentiate = TRUE,
                             label = list(
@@ -227,6 +231,8 @@ tbl_multi <- tbl_regression(cox_multi, exponentiate = TRUE,
                               mburden   ~ "Metastatic burden",
                               Lung      ~ "Lung metastasis", 
                               Liver     ~ "Liver metastasis",
+                              Brain          ~ "Brain metastasis",
+                              Bone           ~ "Bone metastasis",
                               delayrx   ~ "Delayed treatment", 
                               skip      ~ "Skipped treatment")) %>%
   bold_labels() %>% bold_p(t = 0.05)

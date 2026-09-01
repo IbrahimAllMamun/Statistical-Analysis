@@ -77,14 +77,14 @@ Sex missing          : 1
   Firth penalized likelihood is therefore used for Tables 2 and 3, and
   NEWS is left out of the adjustment set (it separates the groups too).
 
---- Table 2: NLR(d5) model (Firth) ---
-               Factor Odds ratio        95% CI      P
-             NLR (d5)      1.649   1.303-2.559 <0.001
-    Sex (male gender)      2.466  0.293-23.687  0.392
- Age 40-59 y (vs <40)      0.729   0.073-8.510  0.785
- Age 60-74 y (vs <40)      0.627  0.023-12.288  0.750
-   Age 75+ y (vs <40)      1.944 <0.001-93.358  0.746
-                 SOFA      3.474  1.763-11.504 <0.001
+--- Table 2: NEWS(d5) model (Firth) ---
+               Factor Odds ratio         95% CI      P
+            NEWS (d5)      1.890    1.396-5.906 <0.001
+    Sex (male gender)      1.512    0.009->1000  0.846
+ Age 40-59 y (vs <40)      0.452 <0.001-369.057  0.734
+ Age 60-74 y (vs <40)      0.669  0.003-261.827  0.847
+   Age 75+ y (vs <40)      5.667   <0.001->1000  0.485
+                 SOFA      0.601    0.059-9.388  0.556
 --- Table 3: NLPR(d5) model (Firth) ---
                Factor Odds ratio        95% CI      P
             NLPR (d5)      2.372   1.654-8.554 <0.001
@@ -94,19 +94,19 @@ Sex missing          : 1
    Age 75+ y (vs <40)      0.634 <0.001-89.469  0.858
                  SOFA      1.151  0.268-20.919  0.816
 --- Table 4: ROC ---
-              Parameter Cut-off value Specificity Sensitivity   AUC      95% CI
-               NLR (d1)        17.963       0.680       0.615 0.611 0.479-0.742
-               NLR (d3)        14.088       0.733       0.538 0.617 0.477-0.757
-               NLR (d5)        11.193       0.880       0.962 0.929 0.852-1.000
-              NLPR (d1)        14.228       0.920       0.192 0.458 0.317-0.599
-              NLPR (d3)         8.487       0.822       0.769 0.751 0.625-0.877
-              NLPR (d5)         7.644       1.000       1.000 1.000 1.000-1.000
- NLPR (d5) & age & SOFA         0.545       1.000       1.000 1.000 1.000-1.000
-      P
-  0.099
-  0.101
- <0.001
-  0.560
- <0.001
- <0.001
- <0.001
+              Parameter Cut-off value Specificity Sensitivity   PPV   NPV   AUC
+              NEWS (d1)         8.500       0.933       1.000 0.839 1.000 0.996
+              NEWS (d3)         7.000       1.000       1.000 1.000 1.000 1.000
+              NEWS (d5)         7.000       1.000       1.000 1.000 1.000 1.000
+              NLPR (d1)        14.228       0.920       0.192 0.455 0.767 0.458
+              NLPR (d3)         8.487       0.822       0.769 0.606 0.909 0.751
+              NLPR (d5)         7.644       1.000       1.000 1.000 1.000 1.000
+ NLPR (d5) & age & SOFA         0.545       1.000       1.000 1.000 1.000 1.000
+      95% CI      P
+ 0.991-1.000 <0.001
+ 1.000-1.000 <0.001
+ 1.000-1.000 <0.001
+ 0.317-0.599  0.560
+ 0.625-0.877 <0.001
+ 1.000-1.000 <0.001
+ 1.000-1.000 <0.001
