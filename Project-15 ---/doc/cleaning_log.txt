@@ -1,0 +1,144 @@
+Rows read from Sheet1: 111
+
+--- age bands (client's cut-points) ---
+  18-30   44 (39.6%)
+  31-49   37 (33.3%)
+  >49     30 (27.0%)
+  mean age 39.7 (SD 15.4)  [document: 39.7 +/- 15.4]
+
+--- outcome counts: patients vs diagnoses ---
+  refractive  patients  49 (44.1%) | diagnoses  56 | document reports  56   <-- MISMATCH
+  anterior    patients  49 (44.1%) | diagnoses  61 | document reports  61   <-- MISMATCH
+  posterior   patients  10 (9.0%) | diagnoses  10 | document reports  10
+  Where these differ, the document counted DIAGNOSES; a regression outcome
+  has to be one row per patient, so the patient count is what is modelled.
+
+--- model fit sizes (complete cases) ---
+  Model 1 refractive error      : n = 110, events = 49
+  Model 2 anterior-segment      : n = 110, events = 48
+  Model 3 posterior-segment     : n = 111, events = 10
+  Rows drop out of Models 1-2 where betel nut or family history of
+  systemic disease was left blank on the form.
+
+--- COLLINEARITY: terms glm could not estimate ---
+  nutritionYes
+  Cross-tabulation of the two living-condition variables:
+         nutrition
+  latrine No Yes <NA>
+      No  15   0    0
+      Yes  0  94    2
+  Every participant without a sanitary latrine also lacks proper
+  nutrition, and every participant with one has it - the two columns
+  are the same variable. Only one can enter the model, which is why
+  Table 5 of the source document prints an identical odds ratio on
+  both rows.
+
+--- Table 5 ---
+                           Variable Refractive error aOR (95% CI) p-value
+                  Age group (years)                                      
+                              18-30                     Reference       -
+                              31-49           1.146 (0.340-3.914)   0.826
+                                >49         10.126 (2.307-53.071)   0.003
+                                Sex                                      
+                               Male                     Reference       -
+                             Female           0.341 (0.090-1.154)   0.094
+          History of ocular disease                                      
+                                 No                     Reference       -
+                                Yes          3.671 (0.371-90.406)   0.315
+           History of ocular injury                                      
+                                 No                     Reference       -
+                                Yes          2.895 (0.399-27.699)   0.313
+                            Smoking                                      
+                                 No                     Reference       -
+                                Yes           0.272 (0.060-1.106)   0.076
+                Alcohol consumption                                      
+                                 No                     Reference       -
+                                Yes           0.407 (0.103-1.487)   0.183
+         Betel nut/leaf consumption                                      
+                                 No                     Reference       -
+                                Yes          2.705 (0.725-11.145)   0.147
+   Family history of ocular disease                                      
+                                 No                     Reference       -
+                                Yes          6.204 (2.157-19.514)   0.001
+ Family history of systemic disease                                      
+                                 No                     Reference       -
+                                Yes           0.915 (0.272-3.045)   0.885
+                     Housing status                                      
+                              Brick                     Reference       -
+                             Bamboo           0.774 (0.062-8.251)   0.835
+                               Wood           0.222 (0.016-1.846)   0.200
+            Use of sanitary latrine                                      
+                                 No                     Reference       -
+                                Yes          2.929 (0.259-38.147)   0.391
+                   Proper nutrition                                      
+                                 No                     Reference       -
+                                Yes     Not estimable (collinear)       -
+ Anterior-segment disease aOR (95% CI) p-value 
+                                               
+                             Reference        -
+                  6.118 (1.700-24.811)    0.007
+                 17.359 (3.919-92.238)   <0.001
+                                               
+                             Reference        -
+                   1.226 (0.336-4.607)    0.757
+                                               
+                             Reference        -
+                  1.048 (0.116-12.825)    0.968
+                                               
+                             Reference        -
+                  2.625 (0.259-44.654)    0.456
+                                               
+                             Reference        -
+                  3.102 (0.738-14.932)    0.136
+                                               
+                             Reference        -
+                   0.963 (0.224-4.205)    0.960
+                                               
+                             Reference        -
+                   0.846 (0.200-3.210)    0.811
+                                               
+                             Reference        -
+                   0.223 (0.055-0.755)    0.023
+                                               
+                             Reference        -
+                  6.154 (1.488-30.488)    0.017
+                                               
+                             Reference        -
+                  4.202 (0.405-43.858)    0.218
+                  2.415 (0.299-17.403)    0.386
+                                               
+                             Reference        -
+                   0.385 (0.028-3.829)    0.434
+                                               
+                             Reference        -
+             Not estimable (collinear)        -
+
+--- Table 6 ---
+                         Variable           COR (95% CI) p-value
+                Age group (years)                               
+                            18-30              Reference       -
+                            31-49    0.781 (0.099-4.968)   0.793
+                              >49   2.733 (0.617-14.270)   0.193
+                              Sex                               
+                             Male              Reference       -
+                           Female    0.870 (0.229-3.307)   0.834
+        History of ocular disease                               
+                               No              Reference       -
+                              Yes 24.250 (5.063-130.780)  <0.001
+ Family history of ocular disease                               
+                               No              Reference       -
+                              Yes 17.735 (3.145-333.880)   0.007
+   Firth aOR (95% CI) p-value 
+                              
+            Reference        -
+  0.704 (0.107-4.012)    0.690
+  0.332 (0.002-4.228)    0.440
+                              
+            Reference        -
+  0.907 (0.199-4.220)    0.897
+                              
+            Reference        -
+ 32.885 (2.437->1000)    0.006
+                              
+            Reference        -
+ 9.269 (1.839-93.635)    0.005
