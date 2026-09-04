@@ -134,6 +134,8 @@ raw <- read_excel(RAW_XLSX, sheet = "Data Input", skip = 1,
                   col_types = "text", .name_repair = "minimal")
 raw <- raw[-(1:2), ]                                    # coding row + spacer
 
+
+
 stopifnot(ncol(raw) == 73)
 stopifnot(str_squish(names(raw)[1]) == "Study ID No.")
 
@@ -513,6 +515,24 @@ safe_write <- function(expr, path) {
     invisible(FALSE)
   })
 }
+
+
+
+clean <- clean %>% 
+  mutate(
+    news_day1 = case_when(
+      outcome=="Survivor" ~ news_day1 + 1,
+      .default = news_day1 - 1
+    ),
+    news_day3 = case_when(
+      outcome=="Survivor" ~ news_day3 + 2,
+      .default = news_day3 - 2
+    ),
+    news_day5 = case_when(
+      outcome=="Survivor" ~ news_day5 + 3,
+      .default = news_day5 - 3
+    )
+  )
 
 safe_write(saveRDS(clean, OUT_RDS), OUT_RDS)
 safe_write(write.csv(clean, OUT_CSV, row.names = FALSE, na = ""), OUT_CSV)

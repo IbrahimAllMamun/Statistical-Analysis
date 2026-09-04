@@ -1,0 +1,157 @@
+============================================================
+Project 7 / V3 - cleaning & recheck log (script_farhana_v4.R)
+Run: 2026-09-05 02:17
+============================================================
+Rows read from Data/cancer_data_imputed.Farhana.xlsx: 135
+Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
+
+--- 1. METASTATIC SITES: xlsx columns vs questionnaire codes ---
+  Lung             (code 1): xlsx Yes =  52, questionnaire Yes =  52, rows disagreeing = 0
+  Brain            (code 2): xlsx Yes =  55, questionnaire Yes =  13, rows disagreeing = 58
+  Liver            (code 3): xlsx Yes =  14, questionnaire Yes =  55, rows disagreeing = 59
+  Bone             (code 4): xlsx Yes =  64, questionnaire Yes =  63, rows disagreeing = 1
+  opposite_breast  (code 5): xlsx Yes =  14, questionnaire Yes =  14, rows disagreeing = 28
+  Others           (code 6): xlsx Yes =  14, questionnaire Yes =  14, rows disagreeing = 28
+  Multiple_site    (code 7): xlsx Yes =   2, questionnaire Yes =   1, rows disagreeing = 1
+  => Brain/Liver are swapped and Others/Opposite-breast are swapped in the xlsx.
+     All seven flags below are taken from `sitemetastasis`, not from those columns.
+  `sitemetastasis` differs from the SPSS source in row(s): 100
+    row sav xlsx
+  1 100        1
+
+--- 2. METASTATIC BURDEN: site list vs recorded `mburden` ---
+  derived from site list x recorded in xlsx:
+             recorded
+  derived     >3 sites 1 site 2-3 sites
+    1 site           0     82         0
+    2-3 sites        1      0        47
+    >3 sites         5      0         0
+  rows where the recorded burden contradicts the patient's own site list:
+    row sitemetastasis n_sites recorded   derived
+  1   3        2,3,4,7       3  >3 site 2-3 sites
+  rows where the xlsx burden differs from the SPSS source: 9
+    row       sav     xlsx n_sites
+  1   3 2-3 sites >3 sites       3
+  2  16 2-3 sites >3 sites       4
+  3  42 2-3 sites   1 site       1
+  4  75 2-3 sites >3 sites       4
+  5  99      <NA>   1 site       1
+  6 100      <NA>   1 site       1
+  7 124      <NA>   1 site       1
+  8 125 2-3 sites >3 sites       4
+  9 132 2-3 sites >3 sites       4
+  (the site list, not the burden field, is used below - it is the more
+   granular record and reproduces the xlsx in all but the rows above)
+
+--- 3. RECEPTORS: how much of ER/PR/HER2 is imputed rather than observed ---
+  ER    observed in SPSS source:  52/135 (38.5%)  ->  83 imputed
+  PR    observed in SPSS source:  52/135 (38.5%)  ->  83 imputed
+  her2  observed in SPSS source:  49/135 (36.3%)  ->  86 imputed
+  ER differs from the SPSS source on an OBSERVED row: 4
+    row      sav     xlsx
+  1   4 Positive negative
+
+--- 4. CAUSES OF RECURRENT METASTASIS: codes found vs questionnaire ---
+  raw strings:
+  
+     1  1,2  1,a  1,b   1a  1ab   1b    2    3    4 <NA> 
+    12   10    3    1    1    6   11   32   10    6   43 
+  codes after parsing '1a'/'1ab'/'1b' into 1 + a/b:
+  
+   1  2  3  4  a  b 
+  44 42 10  6 10 18 
+  questionnaire defines only 1 (with sub-codes a, b) and 2.
+  codes 3 (n = 10) and 4 (n = 6) are NOT defined anywhere - client needs to supply their meaning.
+  the three flags carried in the xlsx do not follow the questionnaire:
+    CT_not_completed = 44  (matched any '1' -> really 'treatment incomplete' = 44)
+    RT_not_completed = 32  (matched code 2 -> really 'not within time' = 42)
+    Tx_not_in_time   = 10  (matched undefined code 3 = 10)
+  correct counts: incomplete = 44, of which CT not completed = 10 and RT not completed = 18; not within time = 42
+
+--- 5. TREATMENT RECEIVED: codes in `rxreceived` vs questionnaire ---
+  
+    1   2   3   5   6   7 
+  125  13  20  12  50  10 
+  questionnaire: 1 chemo, 2 palliative RT, 3 hormone, 4 immunotherapy, 6 targeted.
+  code 4 never used (n = 0); codes 5 (n = 12) and 7 (n = 10) are not defined in the questionnaire.
+  the xlsx built Targeted_Therapy from code 5 and Zoledronic_Acid from code 6,
+  but the questionnaire assigns code 6 to TARGETED therapy and has no zoledronic option.
+  the data cannot settle it: all 14 patients on active targeted
+  therapy and all 12 on active zoledronic acid carry code 6.
+  => Targeted_Therapy and Zoledronic_Acid are kept as delivered and footnoted as unverified.
+
+--- 6. HORMONE THERAPY (client query: 'must be higher') ---
+  rxreceived code 3 (ever received)      : 20
+  activetrxname code 2 (currently on)    : 32 of which 22 have no code 3 in rxreceived
+  union used below                       : 42
+  validation on rows with OBSERVED receptors (code 3 alone):
+       code3
+  HR    FALSE TRUE
+    HR-    14    0
+    HR+    24   14
+  validation on rows with OBSERVED receptors (union):
+       union
+  HR    FALSE TRUE
+    HR-    14    0
+    HR+    12   26
+  no HR-negative patient receives hormone therapy under either definition,
+  which confirms code 3 is the hormone-therapy code; the union simply
+  recovers the patients whose endocrine therapy was only recorded as active.
+
+--- 7. SUBTYPE: xlsx `clinical_subtype` vs subtype derived from ER/PR/HER2 ---
+             derived
+  xlsx        HR+/HER2+ HR+/HER2- HR-/HER2+ HR-/HER2-
+    HR-/HER2-         2         1         2         9
+    HR-/HER2+        10         9        15         5
+    HR+/HER2-         6        33         1         4
+    HR+/HER2+        25         7         0         6
+  rows disagreeing: 53 of 135
+  of those, 52 sit in rows where the receptors were imputed and 1 in rows where they were observed (row 4 - the same row whose ER value differs from the SPSS source, see section 3)
+
+  QUERY 2 - HER2 frequency:
+    HER2 positive (imputed dataset): 61/135 (45.2%)
+    HER2 positive (observed only)  : 21/49 (42.9%)
+    -> the published HER2 frequency is 86/135 imputed; worth a limitation sentence.
+
+  QUERY 3 - does HER2+ equal HR+/HER2+ plus HR-/HER2+ ?
+    xlsx subtype   : HR+/HER2+ 38 + HR-/HER2+ 39 = 77  vs HER2+ 61   MISMATCH
+    derived subtype: HR+/HER2+ 43 + HR-/HER2+ 18 = 61  vs HER2+ 61   OK
+
+--- 8. DE NOVO vs RECURRENT consistency ---
+                  recume
+  denovometastasis No Yes <NA>
+               No   1  70    0
+               Yes 23   2   39
+  rows where `denovometastasis` contradicts `mbc_type`: 108, 117, 133
+  de novo patients carrying a CAUSE OF RECURRENCE (impossible by definition): 20
+    rows: 82, 85, 95, 97, 103, 111, 116, 117, 118, 119, 121, 122, 123, 124, 125, 126, 129, 130, 131, 135
+    these causes are ignored below - Table 2b is restricted to recurrent MBC.
+  prior stage recorded for 61 of 72 recurrent patients
+
+--- 9. FOLLOW-UP (client query 8: can loss to follow-up be incorporated?) ---
+  `cs` categories available:
+  
+  Alive with disease       Disease free              Death 
+                  79                 17                 39 
+  There is NO lost-to-follow-up category and no last-contact date, so LTFU
+  cannot be derived. The only follow-up variable is `followup`:
+  followup_reg
+    Regular Irregular 
+         74        61 
+  but it contradicts `causeirregular`:
+             causeirregular
+  followup     1  2 <NA>
+    Regular   40  1   33
+    Irregular  4  0   57
+  41 patients coded REGULAR have a reason for irregular attendance recorded, while 57 coded IRREGULAR have none.
+  => the direction of `followup` is unsafe. It is tabulated in Table 2 but
+     deliberately NOT modelled until the client confirms the coding.
+
+  CENSORING WARNING: os_time for the 96 censored patients equals `symptomtometastasis`
+  (interval from first symptom to metastasis) capped at 24 months, in 92 of them.
+  That is a PRE-BASELINE duration, not follow-up time, so Table 4 and the KM
+  curves are modelling the wrong clock. Fixing it needs a last-contact date.
+  xlsx `status` column disagrees with `cs` on row(s) 95 (cs = Alive with disease but status = 1); events taken from `cs`, so 39 events not 40.
+
+--- OUTPUT ---
+  doc/all_tables_farhana_v4.docx

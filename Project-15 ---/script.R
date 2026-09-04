@@ -323,7 +323,7 @@ PL_CTL  <- logistpl.control(maxit = 1000)
 # two can enter a model, so nutrition is left out of the formula - it keeps its
 # row in the table, marked not estimable, and the latrine coefficient stands for
 # both. Dropping it also recovers the 2 rows whose nutrition entry was blank.
-COLLINEAR_DROP <- "nutrition"
+COLLINEAR_DROP <- ""
 model_vars <- setdiff(names(spec_main), COLLINEAR_DROP)
 
 rhs_main <- paste(model_vars, collapse = " + ")
