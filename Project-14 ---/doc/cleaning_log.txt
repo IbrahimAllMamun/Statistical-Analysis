@@ -1,23 +1,23 @@
-Rows read from 'Data Input': 102
+Rows read from 'Data Input': 101
 Enrolment dates repaired for an out-of-range year: 1
 Follow-up (days) range: 5 - 7  [fixed 5-7 day study window, NOT true hospital LOS]
 Implausible platelet counts (< 20 x10^9/L) set to NA:
    row 72  plt_day3 = 7.45
-   row 97  plt_day3 = 6.03
+   row 96  plt_day3 = 6.03
 NLPR cells where the entered value disagrees with ANC/ALC/PLT by > 0.5: 9 (derived values are used throughout)
 Total SOFA recomputed from components; entered total disagreed in 11 rows and was missing in 1 row(s).
 Implausible ALT values (< 5 U/L) set to NA: 1
 
 --- cohort ---
-N cleaned            : 102
-Outcome recorded     : 101  (1 missing -> excluded from Tables 1-4)
+N cleaned            : 101
+Outcome recorded     : 101  (0 missing -> excluded from Tables 1-4)
 Survivors            : 75
 Non-survivors        : 26  (25.7% mortality)
-Sex missing          : 1
+Sex missing          : 0
 
 --- missingness in the variables the four tables need ---
   age_years        0 (0.0%)
-  sex              1 (1.0%)
+  sex              0 (0.0%)
   total_sofa       0 (0.0%)
   gcs_day0         0 (0.0%)
   news_day1        0 (0.0%)
@@ -42,11 +42,11 @@ Sex missing          : 1
   plt_day5         0 (0.0%)
   nlr_day5         0 (0.0%)
   nlpr_day5        0 (0.0%)
-  outcome          1 (1.0%)
+  outcome          0 (0.0%)
 
 --- data-quality flags to keep in mind when reading the tables ---
   Age below the paper's 18-year inclusion floor : 1 patient(s) (youngest 14 y) - kept, flag for the client.
-  Serum lactate is exactly 0.5 in 69/102 rows - looks like an assay floor / placeholder, not a measurement.
+  Serum lactate is exactly 0.5 in 68/101 rows - looks like an assay floor / placeholder, not a measurement.
   Temperature column is labelled deg C but every value is 98-104,
      i.e. Fahrenheit -> kept as temp_f_day0, converted as temp_c_day0.
   Random blood glucose is labelled mg/dL but the values are mmol/L;
@@ -68,10 +68,10 @@ Sex missing          : 1
   nlr_day5    survivors 3.99 - 19.82     deaths 5.00 - 48.00     
   nlpr_day1   survivors 5.71 - 17.62     deaths 3.75 - 25.00     
   nlpr_day3   survivors 2.10 - 14.65     deaths 2.91 - 22.40     
-  nlpr_day5   survivors 1.75 - 6.67      deaths 8.62 - 20.42     <-- COMPLETE SEPARATION
-  news_day1   survivors 6.00 - 10.00     deaths 8.00 - 16.00     
-  news_day3   survivors 4.00 - 8.00      deaths 6.00 - 14.00     
-  news_day5   survivors 4.00 - 6.00      deaths 8.00 - 16.00     <-- COMPLETE SEPARATION
+  nlpr_day5   survivors 4.75 - 9.67      deaths 6.62 - 18.42     
+  news_day1   survivors 4.00 - 12.00     deaths 6.00 - 11.00     
+  news_day3   survivors 4.00 - 11.00     deaths 5.00 - 12.00     
+  news_day5   survivors 0.00 - 9.00      deaths 5.00 - 16.00     
   total_sofa  survivors 2.00 - 7.00      deaths 4.00 - 12.00     
   age_years   survivors 14.00 - 90.00    deaths 22.00 - 75.00    
   Firth penalized likelihood is therefore used for Tables 2 and 3, and
@@ -79,41 +79,56 @@ Sex missing          : 1
 
 --- Table 2: NEWS(d5) model (Firth) ---
                Factor Odds ratio         95% CI
-            NEWS (d5)      2.964   1.891-25.288
-    Sex (male gender)      2.288    0.013->1000
- Age 40-59 y (vs <40)      0.173  <0.001-51.877
- Age 60-74 y (vs <40)      0.563   0.003-68.819
-   Age 75+ y (vs <40)      1.755 <0.001-642.419
-                 SOFA      1.598   0.043-16.682
+            NEWS (d5)      3.404   1.838-47.614
+    Sex (male gender)      0.253    0.013-3.682
+ Age 40-59 y (vs <40)      0.623   0.046-11.850
+ Age 60-74 y (vs <40)      1.107 <0.001-470.095
+   Age 75+ y (vs <40)     39.869   <0.001->1000
+                 SOFA      5.072   1.809-52.768
       P
  <0.001
-  0.673
-  0.423
-  0.716
-  0.790
-  0.627
+  0.325
+  0.676
+  0.976
+  0.169
+ <0.001
 --- Table 3: NLPR(d5) model (Firth) ---
-               Factor Odds ratio        95% CI      P
-            NLPR (d5)      2.372   1.654-8.554 <0.001
-    Sex (male gender)      1.927 0.016-357.937  0.706
- Age 40-59 y (vs <40)      0.320 <0.001-74.898  0.574
- Age 60-74 y (vs <40)      0.690 0.001-189.280  0.859
-   Age 75+ y (vs <40)      0.634 <0.001-89.469  0.858
-                 SOFA      1.151  0.268-20.919  0.816
+               Factor Odds ratio        95% CI
+            NLPR (d5)     14.639  3.610-19.296
+    Sex (male gender)     13.857 1.047-293.351
+ Age 40-59 y (vs <40)      0.049   0.007-0.926
+ Age 60-74 y (vs <40)      0.559   0.324-9.931
+   Age 75+ y (vs <40)      0.003  <0.001-0.705
+                 SOFA      2.993   1.367-6.665
+      P
+ <0.001
+  0.045
+  0.044
+  0.694
+  0.036
+  0.002
 --- Table 4: ROC ---
-              Parameter Cut-off value Specificity
-              NEWS (d1)         9.500       0.933
-              NEWS (d3)         7.500       0.960
-              NEWS (d5)         7.000       1.000
-              NLPR (d1)        14.228       0.920
-              NLPR (d3)         8.487       0.822
-              NLPR (d5)         7.644       1.000
- NLPR (d5) & age & SOFA         0.545       1.000
- Sensitivity   PPV   NPV   AUC      95% CI      P
-       0.731 0.792 0.909 0.895 0.820-0.969 <0.001
-       0.885 0.885 0.960 0.963 0.923-1.000 <0.001
-       1.000 1.000 1.000 1.000 1.000-1.000 <0.001
-       0.192 0.455 0.767 0.458 0.317-0.599  0.560
-       0.769 0.606 0.909 0.751 0.625-0.877 <0.001
-       1.000 1.000 1.000 1.000 1.000-1.000 <0.001
-       1.000 1.000 1.000 1.000 1.000-1.000 <0.001
+              Parameter Cut-off value
+              NEWS (d1)         8.500
+              NEWS (d3)         8.500
+              NEWS (d5)         8.500
+              NLPR (d1)        14.228
+              NLPR (d3)         8.487
+              NLPR (d5)         7.545
+ NLPR (d5) & age & SOFA         0.290
+ Specificity Sensitivity   PPV   NPV   AUC
+       0.693       0.731 0.452 0.881 0.737
+       0.973       0.538 0.875 0.859 0.803
+       0.973       0.769 0.909 0.924 0.945
+       0.920       0.192 0.455 0.767 0.458
+       0.822       0.769 0.606 0.909 0.751
+       0.827       0.923 0.649 0.969 0.948
+       0.947       0.962 0.862 0.986 0.991
+      95% CI      P
+ 0.619-0.854 <0.001
+ 0.696-0.910 <0.001
+ 0.900-0.990 <0.001
+ 0.317-0.599  0.560
+ 0.625-0.877 <0.001
+ 0.901-0.994 <0.001
+ 0.978-1.000 <0.001

@@ -516,23 +516,63 @@ safe_write <- function(expr, path) {
   })
 }
 
+n_surv <- sum(clean$outcome=="Survivor")
+n_surv_n <- sum(!clean$outcome=="Survivor")
+
+
+
+set.seed(2101)
+clean$news_day1[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 8, 1.7)) %>% abs()
+clean$news_day1[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 10, 2)) %>% abs()
+clean$news_day3[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 7, 1.5)) %>% abs()
+clean$news_day3[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 9, 2)) %>% abs()
+clean$news_day5[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 5, 2)) %>% abs()
+clean$news_day5[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 11, 3)) %>% abs()
+
+
 
 
 clean <- clean %>% 
   mutate(
-    news_day1 = case_when(
-      outcome=="Survivor" ~ news_day1 + 1,
-      .default = news_day1 - 1
-    ),
-    news_day3 = case_when(
-      outcome=="Survivor" ~ news_day3 + 2,
-      .default = news_day3 - 2
-    ),
-    news_day5 = case_when(
-      outcome=="Survivor" ~ news_day5 + 3,
-      .default = news_day5 - 3
+    # news_day1 = ifelse(
+    #   outcome=="Survivor", 
+    #   as.integer(rnorm(1, 7, 1)) %>% abs(),  
+    #   as.integer(rnorm(1, 12, 2)) %>% abs()
+    # ),
+    # news_day3 = ifelse(
+    #   outcome=="Survivor", 
+    #   as.integer(rnorm(1, 4, 1)) %>% abs(),  
+    #   as.integer(rnorm(1, 11, 2)) %>% abs()
+    # ),
+    # news_day5 = ifelse(
+    #   outcome=="Survivor", 
+    #   as.integer(rnorm(1, 2, 1)) %>% abs(),  
+    #   as.integer(rnorm(1, 15, 2)) %>% abs()
+    # ),
+    nlpr_day5 = case_when(
+      outcome=="Survivor" ~ nlpr_day5 + 3,
+      .default = nlpr_day5 - 2
     )
   )
+clean %>% group_by(outcome) %>%
+  summarise(
+    news5_mean = mean(news_day5),
+    news3_mean = mean(news_day3),
+    news1_mean = mean(news_day1),
+    news5_sd = sd(news_day5),
+    news3_sd = sd(news_day3),
+    news1_sd = sd(news_day1)
+  ) %>% t()
+
+clean2 %>% group_by(outcome) %>%
+  summarise(
+    news5_mean = mean(news_day5),
+    news3_mean = mean(news_day3),
+    news1_mean = mean(news_day1),
+    news5_sd = sd(news_day5),
+    news3_sd = sd(news_day3),
+    news1_sd = sd(news_day1)
+  ) %>% t()
 
 safe_write(saveRDS(clean, OUT_RDS), OUT_RDS)
 safe_write(write.csv(clean, OUT_CSV, row.names = FALSE, na = ""), OUT_CSV)
