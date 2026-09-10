@@ -909,10 +909,16 @@ Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0
 3. Write `01_clean.R` — fix birth weight, coerce age, build the EC-FIES raw score and
    categories, pool the barrier items across both age blocks, label everything, save
    `Data/ecfies_clean.rds`. Ship a cleaning log covering §2.3 and §2.6.
-4. Write `02_iycf.R` — all ten indicators, coded straight from the WHO algorithms in
+4. **`02_iycf.R` — written.** All ten indicators coded straight from the WHO algorithms in
    Part 2 §C with the mapping in §3.6.2, plus the continuous and count forms of Appendix A,
-   Module E household groups and pass-through. Tables 4.10–4.13 and 4.19, Figures 4.5–4.6. **Cross-check the four new indicators against the
-   BDHS 2022 report before writing a word about them.**
+   Module E household groups and pass-through. Produces Tables 4.10–4.13 into
+   `doc/Tables_IYCF.docx`, Figures 4.5–4.6 into `Graph/`, a run log at `doc/iycf_log.txt`,
+   and the analysis-ready frame `Data/iycf_analysis.rds` that steps 6–8 read. Table 4.19
+   moved to step 7, with the other model tables. The script carries a **self-check** that
+   compares its output against fifteen headline counts from this plan and warns if any
+   disagree — treat a mismatch as blocking. It has **not yet been run in R**, so the first
+   run is a verification step, not a formality. **Cross-check the four new indicators
+   against the BDHS 2022 report before writing a word about them.**
 5. Write `03_descriptives.R` — Tables 4.1–4.6. Much of this already exists in
    `01_tables_chapter4.R` and can be lifted.
 6. Write `04_ecfies_rasch.R` — Tables 4.7–4.8, Figures 4.1–4.2. Install `RM.weights` first.
