@@ -841,6 +841,54 @@ education may be carrying the household's entire socioeconomic signal.
 **3. EC-FIES stays null with household diversity out of the model** (β = +0.025, p = 0.50
 for the score; MDD OR 1.024, p = 0.67). The null is not an artefact of over-adjustment.
 
+### 4.8 Bivariate screen — what is associated with child dietary diversity
+
+Table 4.16. All 34 candidate independent variables against the outcome, tested on the 0–8
+food-group score (Kruskal-Wallis, or Spearman for the three continuous variables) with the
+binary MDD chi-squared printed alongside as a secondary column.
+
+**Eight variables reach p < 0.05 on the score:**
+
+| Variable | p (score) | Pattern, mean food-group score |
+|---|---|---|
+| Household food groups (0–5) | <0.001 | ρ = +0.313 |
+| Child age group | <0.001 | 3.34 at 6–8 mo rising to 4.45 at 18–23 mo |
+| Father's education | <0.001 | 3.30 none, 4.71 higher secondary |
+| Division | <0.001 | 3.48 Chittagong to 4.92 Rangpur |
+| Birth weight | <0.001 | 3.33 if <2.5 kg, 4.22 if ≥2.5 kg |
+| Any media access | 0.005 | 3.63 no access, 4.16 with access |
+| Wealth quintile | 0.009 | 3.85 poorest, 4.53 richest, **non-monotone** |
+| Mother's education | 0.049 | 3.95 none, 4.69 tertiary, **non-monotone** |
+
+**EC-FIES severity is null here too** (p = 0.33), consistent with §4.4 and §4.7. The
+bivariate screen finds it on no reading.
+
+Three things worth attention before this becomes Chapter 4 text.
+
+**Birth weight is a new finding and needs care.** Low-birth-weight children score nearly
+one food group lower. The plausible readings run in both directions — a smaller or sicker
+child may be fed differently, or the same deprivation may cause both — and a cross-sectional
+design cannot separate them. It is also downstream of the mixed-units repair in §2.3, so the
+result should be re-checked after the 700 g value is verified.
+
+**Two gradients are not gradients.** Wealth runs 3.85, 3.73, 4.15, 3.88, 4.53 across
+quintiles, and mother's education runs 3.95, 3.93, 3.89, 4.25, 4.69. Both reach
+significance while zigzagging, and in both the lowest category is not the lowest score.
+Report the level means rather than describing either as a dose-response, and expect the
+question at the viva.
+
+**Rangpur is an outlier.** 64.6% reach MDD against 22.9% in Chittagong, and the division
+effect is stronger than wealth. Worth checking whether one or two upazilas are driving it
+before it is interpreted, which is also the clearest argument for the cluster-robust
+standard errors of §3.5.
+
+Nothing here is adjusted for multiple comparisons or for clustering. A variable reaching
+0.05 in this table is a candidate for the multivariable model, not a finding.
+
+Two variables were excluded as candidates rather than tested: 405 of 407 households use an
+improved drinking-water source and 405 of 407 respondents are Bengali. Neither has the
+variance to support a test, and saying so is better than reporting a meaningless p-value.
+
 ---
 
 ## 5. Proposed table and figure plan
@@ -864,13 +912,14 @@ for the score; MDD OR 1.024, p = 0.67). The null is not an artefact of over-adju
 | 4.13 | **Household (Module E) vs child (Module F) food groups and pass-through** *(new, §4.4)* |
 | 4.14 | **Barrier items: prevalence, mean ordinal level by severity, ρ** *(new, §4.5)* |
 | 4.15 | **Barrier scale: total and subscales, α, and wealth-adjusted associations** *(new, §4.5)* |
-| 4.16 | Bivariate associations with EC-FIES severity |
-| 4.17 | **Food-group score on EC-FIES and covariates — Direction B primary model** *(§4.7)* |
-| 4.18 | **All ten IYCF outcomes on EC-FIES, adjusted — the complete panel** *(§3.8, §4.7)* |
-| 4.19 | **Predictors of child dietary diversity, with and without household diet** *(§4.7)* |
-| 4.20 | Ordinal logistic on EC-FIES severity — Direction A primary model *(§3.2)* |
-| 4.21 | Binary logistic on moderate-or-severe — secondary, for comparability only |
-| 4.22 | WHO indicators by EC-FIES severity, binary form — for completeness |
+| 4.16 | **Bivariate: child dietary diversity vs all 34 candidate independent variables** *(§4.8)* |
+| 4.17 | Bivariate associations with EC-FIES severity — Direction A |
+| 4.18 | **Food-group score on EC-FIES and covariates — Direction B primary model** *(§4.7)* |
+| 4.19 | **All ten IYCF outcomes on EC-FIES, adjusted — the complete panel** *(§3.8, §4.7)* |
+| 4.20 | **Predictors of child dietary diversity, with and without household diet** *(§4.7)* |
+| 4.21 | Ordinal logistic on EC-FIES severity — Direction A primary model *(§3.2)* |
+| 4.22 | Binary logistic on moderate-or-severe — secondary, for comparability only |
+| 4.23 | WHO indicators by EC-FIES severity, binary form — for completeness |
 
 **Figures**
 
@@ -914,7 +963,10 @@ Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0
    Module E household groups and pass-through. Produces Tables 4.10–4.13 into
    `doc/Tables_IYCF.docx`, Figures 4.5–4.6 into `Graph/`, a run log at `doc/iycf_log.txt`,
    and the analysis-ready frame `Data/iycf_analysis.rds` that steps 6–8 read. Table 4.19
-   moved to step 7, with the other model tables. The script carries a **self-check** that
+   moved to step 7, with the other model tables. Table 4.16, the bivariate screen of all 34
+   candidate independent variables against child dietary diversity, is also produced here —
+   it needs the same covariate construction, which the script exports so `05_models.R` does
+   not re-derive it. The script carries a **self-check** that
    compares its output against fifteen headline counts from this plan and warns if any
    disagree — treat a mismatch as blocking. It has **not yet been run in R**, so the first
    run is a verification step, not a formality. **Cross-check the four new indicators
@@ -922,7 +974,7 @@ Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0
 5. Write `03_descriptives.R` — Tables 4.1–4.6. Much of this already exists in
    `01_tables_chapter4.R` and can be lifted.
 6. Write `04_ecfies_rasch.R` — Tables 4.7–4.8, Figures 4.1–4.2. Install `RM.weights` first.
-7. Write `05_models.R` — Tables 4.16–4.22, Figures 4.8–4.9, with upazila-clustered SEs.
+7. Write `05_models.R` — Tables 4.17–4.23, Figures 4.8–4.9, with upazila-clustered SEs.
    **Fix the primary outcome and primary exposure in writing first** (§3.2, §3.8).
    Direction B, the IYCF outcome, is the main model set; Direction A's ordinal model
    follows the same covariate structure.

@@ -12,7 +12,7 @@
 #               Food groups   - Annex 6, and the row mapping in Annex 8
 #
 # Produces:
-#   doc/Tables_IYCF.docx     Tables 4.10 - 4.13
+#   doc/Tables_IYCF.docx     Table 4.16 (bivariate) and Tables 4.10 - 4.13
 #   Graph/Fig4_5_food_groups.png
 #   Graph/Fig4_6_hh_vs_child.png
 #   Data/iycf_analysis.rds   analysis-ready data frame for 05_models.R
@@ -169,6 +169,22 @@ sp_partial <- function(x, y, ctrl) {
   ex <- residuals(lm(rx ~ rc)); ey <- residuals(lm(ry ~ rc))
   ct <- cor.test(ex, ey)
   c(rho = unname(ct$estimate), p = ct$p.value, n = sum(ok))
+}
+
+# Shared table styling. Defined here rather than beside the first table
+# because all five tables in this script use it.
+mk_ft <- function(df, widths = NULL) {
+  ft <- flextable(df) %>%
+    bold(part = "header") %>%
+    align(j = 2:ncol(df), align = "center", part = "all") %>%
+    fontsize(size = 9, part = "all") %>%
+    font(fontname = "Times New Roman", part = "all") %>%
+    padding(padding.top = 2, padding.bottom = 2, part = "all") %>%
+    border_remove() %>%
+    hline_top(part = "header", border = fp_border(width = 1.2)) %>%
+    hline_bottom(part = "header", border = fp_border(width = 1)) %>%
+    hline_bottom(part = "body", border = fp_border(width = 1.2))
+  set_table_properties(ft, layout = "autofit", width = 1)
 }
 
 # Okabe-Ito, colour-blind safe.  The client has asked for NO RED anywhere.
@@ -431,7 +447,7 @@ expect <- list(
   list("EC-FIES complete", sum(!is.na(ec_raw)),          392),
   list("Moderate/severe",  sum(modsev, na.rm = TRUE),     80),
   list("Food-group score sum", sum(fgs),                1639),
-  list("Household groups sum", sum(hhdiv),              1305)
+  list("Household groups sum", sum(hhdiv),              1305),
 )
 bad <- 0
 for (e in expect) {
@@ -481,7 +497,227 @@ dat <- tibble(
 )
 
 # ----------------------------------------------------------
-# 14. Table 4.10 - the ten indicators
+# 14. Candidate independent variables
+#      Built here rather than in 05_models.R so that Table 4.16 and the models
+#      use one definition of every covariate.  Collapsing decisions are stated
+#      inline and repeated in the Table 4.16 footnote, because several are
+#      judgement calls the supervisor may want to change.
+# ----------------------------------------------------------
+lv <- function(x, levels, labels = levels)
+  factor(as.character(haven::as_factor(x)), levels = levels, labels = labels)
+
+EDU5 <- c("No formal education", "Primary", "Secondary", "Higher Secondary",
+          "Higher Study (tertiary education)")
+EDU5L <- c("No formal education", "Primary", "Secondary", "Higher secondary",
+           "Higher education")
+
+# Birth weight carries two problems at once: 7 forms were filled in kilograms
+# and the rest in grams, and 98 = "don't know" was left in the numeric field.
+# Same repair as 01_tables_chapter4.R.  "Don't know" is kept as its own level
+# rather than dropped, because 21.6% of the sample would otherwise vanish.
+bw_raw <- as.numeric(raw$D8_birth_weight_kg)
+bw_g   <- ifelse(bw_raw == 98, NA_real_, ifelse(bw_raw < 10, bw_raw * 1000, bw_raw))
+anc_n  <- ifelse(as.numeric(raw$B15_ANC) == 98, NA_real_, as.numeric(raw$B15_ANC))
+
+cov <- tibble(
+  `Child age group`      = cut(age_m, c(-Inf, 8, 11, 17, Inf),
+                               labels = c("6-8 months", "9-11 months",
+                                          "12-17 months", "18-23 months")),
+  `Child sex`            = lv(raw$D5_sex_of_the_child, c("Male", "Female")),
+  `Birth order`          = lv(raw$D6_birth_order, c("First", "Second", "Third", "Above"),
+                              c("First", "Second", "Third", "Fourth or higher")),
+  `Birth weight`         = factor(ifelse(is.na(bw_g), "Don't know",
+                                  ifelse(bw_g < 2500, "<2.5 kg", "2.5 kg or more")),
+                                  levels = c("<2.5 kg", "2.5 kg or more", "Don't know")),
+  `Currently breastfed`  = factor(ifelse(bf, "Yes", "No"), levels = c("No", "Yes")),
+  `Mother's age (years)`  = as.numeric(raw$B8_age_mother),
+  `Mother's education`   = lv(raw$B11_edu_mother, EDU5, EDU5L),
+  # 385 of 407 mothers are housewives, so the seven recorded categories collapse
+  # to a single employed/not contrast; anything finer is empty cells.
+  `Mother's occupation`  = factor(ifelse(as.character(haven::as_factor(raw$B12_occupation_mother)) ==
+                                         "Housewife", "Housewife", "Employed / other"),
+                                  levels = c("Housewife", "Employed / other")),
+  `Age at marriage`      = factor(ifelse(as.numeric(raw$B9_age_at_marriage) < 18,
+                                         "<18 years", "18 years or more"),
+                                  levels = c("<18 years", "18 years or more")),
+  `Number of children`   = cut(as.numeric(raw$B7_How_many_children), c(-Inf, 1, 2, Inf),
+                               labels = c("1", "2", "3 or more")),
+  `Father's age (years)`  = as.numeric(raw$B3_age_father),
+  `Father's education`   = lv(raw$B5_education_child_father, EDU5, EDU5L),
+  # Labels matter here: the draft called the 224 salaried/business/other group
+  # "Business", which it mostly is not. See section 2.4 of the analysis plan.
+  `Father's occupation`  = factor(dplyr::case_when(
+      as.character(haven::as_factor(raw$B4_occupation_father)) %in%
+        c("Agriculture", "Wage-Labor")                        ~ "Agriculture / day labour",
+      as.character(haven::as_factor(raw$B4_occupation_father)) %in%
+        c("Business", "Job-holder", "Others")                 ~ "Business / service / other",
+      as.character(haven::as_factor(raw$B4_occupation_father)) == "Remittance erner" ~ "Remittance",
+      TRUE                                                    ~ "Not working"),
+      levels = c("Agriculture / day labour", "Business / service / other",
+                 "Remittance", "Not working")),
+  `Family type`          = lv(raw$B2_type_of_your_family, c("Nuclear", "Joint")),
+  `Household size`       = cut(as.numeric(raw$B6_members_household), c(-Inf, 4, 6, Inf),
+                               labels = c("4 or fewer", "5-6", "7 or more")),
+  `Religion`             = lv(raw$B13_religion, c("Muslim", "Hindu")),
+  `Wealth quintile`      = lv(raw$Ncombsco, c("Lowest", "Second", "Middle", "Fourth", "Highest"),
+                              c("Poorest", "Poorer", "Middle", "Richer", "Richest")),
+  `Residence`            = lv(raw$A2_3_Residence, c("Urban", "Rural")),
+  `Division`             = haven::as_factor(raw$DIVISION),
+  # WHO's own threshold for adequate antenatal care is four or more visits.
+  `ANC visits`           = factor(ifelse(is.na(anc_n), NA_character_,
+                                  ifelse(anc_n == 0, "None",
+                                  ifelse(anc_n < 4, "1-3", "4 or more"))),
+                                  levels = c("None", "1-3", "4 or more")),
+  `Place of delivery`    = factor(dplyr::case_when(
+      as.character(haven::as_factor(raw$B14_child_was_delivered)) %in%
+        c("Your Home", "Natal House")                                  ~ "Home",
+      as.character(haven::as_factor(raw$B14_child_was_delivered)) %in%
+        c("Government hospital", "Upazilla Health Complex")            ~ "Government facility",
+      as.character(haven::as_factor(raw$B14_child_was_delivered)) %in%
+        c("Private hospital", "Clinic")                                ~ "Private facility",
+      TRUE                                                             ~ "Other"),
+      levels = c("Home", "Government facility", "Private facility", "Other")),
+  `Mode of delivery`     = lv(raw$B16_How_child_delivered, c("Normal", "Cesarean")),
+  `Birth attendant`      = lv(raw$B17_helped_during_delivery,
+                              c("Health professionals/Trained birth attendant", "Midwife", "Others"),
+                              c("Health professional / trained attendant", "Midwife", "Other")),
+  `Postnatal care visit` = lv(raw$B18_PNC, c("No", "Yes")),
+  `Nutrition counselling` = lv(raw$B21_nutrition_counselling, c("No", "Yes")),
+  # Collapsed from six categories; father-in-law, mother-in-law and "someone
+  # else" total 21 and cannot stand alone.
+  `Child health decisions` = factor(dplyr::case_when(
+      as.character(haven::as_factor(raw$B20_decision_making)) == "Wife" ~ "Mother alone",
+      as.character(haven::as_factor(raw$B20_decision_making)) == "Both" ~ "Mother and husband jointly",
+      TRUE                                                             ~ "Husband or other relative"),
+      levels = c("Mother alone", "Mother and husband jointly", "Husband or other relative")),
+  # B19_Media_access5 is the "No access" tick-box, so it inverts.
+  `Any media access`     = factor(ifelse(as.numeric(raw$B19_Media_access5) == 1, "No", "Yes"),
+                                  levels = c("No", "Yes")),
+  # JMP classification. Code 113 is a "Skip" sentinel, not a facility type.
+  `Improved sanitation`  = factor(ifelse(as.numeric(raw$C2_toilet_facility) == 113, NA_character_,
+                                  ifelse(as.numeric(raw$C2_toilet_facility) %in% c(11, 12, 13, 21, 22),
+                                         "Improved", "Unimproved")),
+                                  levels = c("Unimproved", "Improved")),
+  `Clean cooking fuel`   = factor(ifelse(as.numeric(raw$C3_fuel_for_cooking) %in% 1:4,
+                                         "Clean", "Solid / polluting"),
+                                  levels = c("Solid / polluting", "Clean")),
+  `Shared toilet`        = lv(raw$C11_share_toilet, c("Yes", "No")),
+  `Separate kitchen`     = lv(raw$C13_kitchen, c("No", "Yes")),
+  `Household bank account` = lv(raw$C7_bank_account, c("No", "Yes")),
+  `EC-FIES severity`     = ec_cat,
+  `Household food groups (0-5)` = as.numeric(hhdiv)
+)
+# Drinking water and ethnicity are deliberately NOT candidates: 405 of 407
+# households use an improved source and 405 of 407 respondents are Bengali.
+# Neither has the variance to support a test; both are noted in the footnote.
+
+# ----------------------------------------------------------
+# 15. Table 4.16 - bivariate: child dietary diversity vs every candidate
+#     independent variable.
+#     The outcome is shown BOTH ways, per section 3.7 of the analysis plan:
+#     binary MDD because that is the reportable indicator, and the 0-8
+#     food-group score because that is what the test is run on.  The score
+#     column carries the primary p-value; the MDD p-value is secondary and
+#     is printed so a reader can see the cost of dichotomising.
+# ----------------------------------------------------------
+# Fisher's exact rather than chi-squared whenever a 2x2 has an expected count
+# below 5 - religion (19 Hindu), improved sanitation (21 unimproved) and mode
+# of delivery all sail close to that line.
+p_binary <- function(f, y) {
+  tb <- table(f, y)
+  if (any(dim(tb) < 2)) return(NA_real_)
+  ex <- suppressWarnings(chisq.test(tb)$expected)
+  if (any(ex < 5) && all(dim(tb) == c(2, 2))) fisher.test(tb)$p.value
+  else suppressWarnings(chisq.test(tb)$p.value)
+}
+
+biv_rows <- function(label, x, score, mdd) {
+  if (is.numeric(x)) {
+    ok <- !is.na(x)
+    ct <- suppressWarnings(cor.test(x[ok], score[ok], method = "spearman", exact = FALSE))
+    wt <- suppressWarnings(wilcox.test(x[ok & mdd], x[ok & !mdd]))
+    return(data.frame(
+      Variable = label, n = sum(ok),
+      `MDD n (%)` = sprintf("median %.0f vs %.0f", median(x[ok & mdd]), median(x[ok & !mdd])),
+      `Score, mean (SD)` = sprintf("rho = %+.3f", unname(ct$estimate)),
+      `p (score)` = fmt_p(ct$p.value), `p (MDD)` = fmt_p(wt$p.value),
+      check.names = FALSE, stringsAsFactors = FALSE))
+  }
+  f  <- droplevels(x)
+  ok <- !is.na(f)
+  pk <- kruskal.test(score[ok], f[ok])$p.value
+  pb <- p_binary(f[ok], mdd[ok])
+  head <- data.frame(Variable = label, n = sum(ok), `MDD n (%)` = "",
+                     `Score, mean (SD)` = "", `p (score)` = fmt_p(pk),
+                     `p (MDD)` = fmt_p(pb), check.names = FALSE, stringsAsFactors = FALSE)
+  body <- do.call(rbind, lapply(levels(f), function(l) {
+    m <- ok & f == l
+    data.frame(Variable = paste0("    ", l), n = sum(m),
+               `MDD n (%)` = sprintf("%d (%.1f)", sum(mdd[m]), 100 * mean(mdd[m])),
+               `Score, mean (SD)` = sprintf("%.2f (%.2f)", mean(score[m]), sd(score[m])),
+               `p (score)` = "", `p (MDD)` = "",
+               check.names = FALSE, stringsAsFactors = FALSE)
+  }))
+  rbind(head, body)
+}
+
+t416 <- do.call(rbind, lapply(names(cov), function(nm)
+  biv_rows(nm, cov[[nm]], fgs, MDD)))
+
+# Ship the covariates alongside the model frame.  The snake_case columns built
+# in section 13 are what the models use; these display-named columns are what
+# Table 4.16 uses, and carrying both means 05_models.R can reproduce any row of
+# the bivariate table without re-deriving a collapse.
+dat <- dplyr::bind_cols(dat, cov)
+
+ft416 <- mk_ft(t416) %>%
+  bold(i = which(!startsWith(t416$Variable, "    ")), j = 1) %>%
+  align(j = 1, align = "left", part = "all")
+# Bold the variables that reach 0.05 on the primary (score) test, so the table
+# can be read at a glance without hunting through 127 rows.
+sig <- which(t416$`p (score)` != "" &
+             (t416$`p (score)` == "<0.001" |
+              suppressWarnings(as.numeric(t416$`p (score)`)) < 0.05))
+if (length(sig)) ft416 <- bold(ft416, i = sig, j = 5)
+
+n_sig <- length(sig)
+
+# Second self-check block. These three cannot go in section 12 because the
+# bivariate table does not exist yet at that point in the script.
+for (e in list(list("Candidate variables", length(cov), 34L),
+               list("Table 4.16 rows",     nrow(t416),  127L),
+               list("Sig. on score p<0.05", n_sig,        8L))) {
+  ok2 <- isTRUE(all.equal(e[[2]], e[[3]]))
+  note(sprintf("  %-22s computed %5s   expected %5s   %s",
+               e[[1]], e[[2]], e[[3]], if (ok2) "ok" else "*** MISMATCH ***"))
+  if (!ok2) warning("Table 4.16 self-check mismatch on ", e[[1]], call. = FALSE,
+                    immediate. = TRUE)
+}
+foot416 <- paste0(
+  "Outcome is the child's dietary diversity, shown two ways. 'MDD n (%)' is the count and ",
+  "percentage reaching minimum dietary diversity, five or more of the eight WHO food groups; ",
+  "'Score, mean (SD)' is the underlying 0-8 food-group score. The PRIMARY test is 'p (score)': a ",
+  "Kruskal-Wallis test of the score across the levels of each variable, or a Spearman correlation ",
+  "for the three continuous variables, where the estimate column shows rho and the MDD column ",
+  "shows medians. 'p (MDD)' is a secondary chi-squared test on the binary indicator, or Fisher's ",
+  "exact test where a two-by-two table has an expected count below five; it is printed so the cost ",
+  "of dichotomising is visible, and it is not the basis for any conclusion. Bold marks p < 0.05 on ",
+  "the primary test (", n_sig, " variables). Denominators vary: antenatal care visits exclude one ",
+  "'don't know', sanitation excludes four skip codes, and EC-FIES severity is available for ",
+  sum(!is.na(ec_raw)), " children with a complete eight-item score. Birth weight was recorded in ",
+  "mixed units and is repaired here (7 forms in kilograms multiplied by 1000); the 88 'don't know' ",
+  "responses are kept as their own level rather than dropped. Father's occupation collapses seven ",
+  "recorded categories into four, and the 224 counted as 'business / service / other' are mostly ",
+  "salaried employees, not traders. Child health decisions collapses six categories into three. ",
+  "Drinking water source and ethnicity are excluded as candidates: 405 of 407 households use an ",
+  "improved water source and 405 of 407 respondents are Bengali, so neither has the variance to ",
+  "support a test. No adjustment is made for multiple comparisons and none of these tests is ",
+  "adjusted for clustering within the 25 upazila recruitment sites, so a variable reaching 0.05 ",
+  "here is a candidate for the multivariable model, not a finding."
+)
+
+# ----------------------------------------------------------
+# 16. Table 4.10 - the ten indicators
 # ----------------------------------------------------------
 ind_rows <- list(
   list("Minimum dietary diversity (MDD)",            MDD,   rep(TRUE, nrow(raw))),
@@ -507,19 +743,6 @@ t410 <- data.frame(
   `BDHS 2022` = BDHS, check.names = FALSE, stringsAsFactors = FALSE
 )
 
-mk_ft <- function(df, widths = NULL) {
-  ft <- flextable(df) %>%
-    bold(part = "header") %>%
-    align(j = 2:ncol(df), align = "center", part = "all") %>%
-    fontsize(size = 9, part = "all") %>%
-    font(fontname = "Times New Roman", part = "all") %>%
-    padding(padding.top = 2, padding.bottom = 2, part = "all") %>%
-    border_remove() %>%
-    hline_top(part = "header", border = fp_border(width = 1.2)) %>%
-    hline_bottom(part = "header", border = fp_border(width = 1)) %>%
-    hline_bottom(part = "body", border = fp_border(width = 1.2))
-  set_table_properties(ft, layout = "autofit", width = 1)
-}
 ft410 <- mk_ft(t410) %>%
   set_header_labels(Estimate = "n/N (%)   95% CI", Restricted = "6-23 mo only (%)")
 
@@ -544,7 +767,7 @@ foot410 <- paste0(
 )
 
 # ----------------------------------------------------------
-# 15. Table 4.11 - the eight food groups
+# 17. Table 4.11 - the eight food groups
 # ----------------------------------------------------------
 t411 <- data.frame(
   `Food group` = c(colnames(FG), "Mean food-group score (of 8)"),
@@ -569,7 +792,7 @@ foot411 <- paste0(
 )
 
 # ----------------------------------------------------------
-# 16. Table 4.12 - diet on the underlying scales vs EC-FIES
+# 18. Table 4.12 - diet on the underlying scales vs EC-FIES
 #     Section 3.7 of the plan: test on the scale, not the cut-off.
 # ----------------------------------------------------------
 scale_vars <- list(
@@ -621,7 +844,7 @@ foot412 <- paste0(
 )
 
 # ----------------------------------------------------------
-# 17. Table 4.13 - household to child pass-through
+# 19. Table 4.13 - household to child pass-through
 # ----------------------------------------------------------
 # NA-safe: modsev is NA for the 15 children without a complete EC-FIES score,
 # so it is re-derived here as a plain logical over the complete cases only.
@@ -662,7 +885,7 @@ foot413 <- paste0(
 )
 
 # ----------------------------------------------------------
-# 18. Figure 4.5 - food group consumption
+# 20. Figure 4.5 - food group consumption
 # ----------------------------------------------------------
 fig45_df <- data.frame(group = factor(colnames(FG), levels = colnames(FG)[order(colMeans(FG))]),
                        pct   = 100 * colMeans(FG))
@@ -677,7 +900,7 @@ fig45 <- ggplot(fig45_df, aes(group, pct)) +
   theme_thesis
 
 # ----------------------------------------------------------
-# 19. Figure 4.6 - household diet falls, child diet does not
+# 21. Figure 4.6 - household diet falls, child diet does not
 #     Both series are plotted as a percentage of the maximum attainable score,
 #     because the household scale runs 0-5 and the child scale 0-8.  Plotting
 #     the raw means on one axis would make the LEVELS look comparable when they
@@ -717,12 +940,14 @@ fig46 <- ggplot(fig46_df, aes(cat, pct, colour = series, group = series)) +
   theme_thesis
 
 # ----------------------------------------------------------
-# 20. Export
+# 22. Export
 # ----------------------------------------------------------
 small    <- fp_text(font.size = 8, italic = TRUE)
 add_foot <- function(d, txt) body_add_fpar(d, fpar(ftext(txt, small)))
 
 doc <- read_docx() %>%
+  body_add_par("Table 4.16  Bivariate association between child dietary diversity and each candidate independent variable", style = "heading 2") %>%
+  body_add_flextable(ft416) %>% add_foot(foot416) %>% body_add_par("") %>%
   body_add_par("Table 4.10  Infant and young child feeding indicators, WHO/UNICEF 2021", style = "heading 2") %>%
   body_add_flextable(ft410) %>% add_foot(foot410) %>% body_add_par("") %>%
   body_add_par("Table 4.11  Consumption of the eight minimum-dietary-diversity food groups", style = "heading 2") %>%
@@ -742,7 +967,7 @@ safe_write(ggsave(file.path(GRAPH_DIR, "Fig4_6_hh_vs_child.png"), fig46,
 safe_write(saveRDS(dat, OUT_RDS), OUT_RDS)
 
 rule("DONE")
-note("Tables  -> ", OUT_DOCX)
+note("Tables  -> ", OUT_DOCX, "  (4.16, then 4.10-4.13)")
 note("Figures -> ", GRAPH_DIR, "/Fig4_5_food_groups.png, Fig4_6_hh_vs_child.png")
 note("Data    -> ", OUT_RDS, "  (", nrow(dat), " rows, ", ncol(dat), " columns)")
 note("Next    -> 05_models.R reads ", OUT_RDS, " for Tables 4.17-4.22.")
