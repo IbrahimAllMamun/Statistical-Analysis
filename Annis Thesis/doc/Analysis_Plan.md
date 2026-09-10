@@ -32,7 +32,18 @@ plan had to guess at. Five consequences, each worked through below:
    wrong — wealth does predict diet. See §4.4, which also reports a **new positive
    finding** that gives the thesis its spine.
 
-**Added later the same week, after review:** the analysis in §4.4 and §4.5 had been run
+**Added 2026-09-10 — the study direction has flipped.** The outcome variable is now an
+**IYCF indicator**, with EC-FIES as the exposure, rather than the reverse. This is a
+different study from the one the synopsis describes and it changes every model. §3.2 is
+rewritten around it, §3.8 is new and handles the multiplicity that ten candidate outcomes
+create, and §4.7 reports the flipped models. The short version: **EC-FIES does not predict
+any IYCF outcome, in any specification, and the estimates are precise enough to call that
+an informative null rather than a failure to detect.** What does predict child diet is
+household dietary diversity, child age and father's education. The synopsis says
+"predictors of food insecurity", so this needs supervisor sign-off before Chapter 4 is
+written — see §7, question 2.
+
+**Added earlier, after review:** the analysis in §4.4 and §4.5 had been run
 on the **binary** form of every indicator, which was a mistake. WHO's cut-offs exist for
 reporting prevalence; dichotomising a scale before testing an association discards
 information and costs power. Every association has been re-run on the underlying
@@ -52,6 +63,8 @@ split, the primary outcome**.
 | EC-FIES scale | **Clean and strong.** α = 0.887, perfect severity gradient, 392/407 complete |
 | Wealth index | **Already built** in SPSS (DHS-style PCA: `comscore`, `Ncombsco`, urban/rural splits) |
 | IYCF indicators | **All 10 computable ones now computed** against the WHO/UNICEF 2021 definitions (§4.3) |
+| Study direction | **Changed 2026-09-10** — an IYCF indicator is the outcome, EC-FIES the exposure (§3.2). Blocking supervisor question |
+| Direction B result | **Fitted.** EC-FIES predicts no IYCF outcome; an informative null with tight intervals (§4.7) |
 | Instrument provenance | **Established.** Module F is WHO's own example questionnaire, translated (§3.6) |
 | Thesis draft | **Skeleton only.** Ch. 1–2 written; Ch. 3 half-empty; Ch. 4 has 5 tables; Ch. 5–7 empty |
 | Front matter | **Contaminated** — table/figure lists belong to a different thesis (see §2.1) |
@@ -222,35 +235,87 @@ newly developed EC-FIES tool in the Bangladeshi context."* A psychometric valida
 section is the single strongest claim to novelty this thesis has, and the data clearly
 supports it. Needs `RM.weights` (FAO's own package) — not currently installed.
 
-### 3.2 Which outcome for the regression models
+### 3.2 Study direction, and which variable is the outcome
 
-**The outcome should not be dichotomised.** The earlier version of this plan made binary
-logistic regression on moderate-or-severe (raw ≥ 4) the primary model. That throws away
-most of the outcome. It also creates an artificial sample-size problem: 80 events at ten
-events per variable buys about 8 predictor degrees of freedom, and a five-level wealth
-quintile eats four of them before anything else is in the model.
+**As of 2026-09-10 the outcome is an IYCF indicator and EC-FIES is the exposure.** That is
+a change of study, not a change of analysis, and the two directions answer different
+questions:
 
-The EC-FIES raw score is an eight-item ordinal scale with α = 0.887 and a clean severity
-gradient (§3.1). Analysed on that scale, the effective sample is **392, not 80 events**,
-and the degrees-of-freedom budget stops being the binding constraint.
+| Direction | Question | Matches the synopsis? |
+|---|---|---|
+| **A.** EC-FIES as outcome | What predicts early childhood food insecurity? | **Yes** — "prevalence and predictors of food insecurity" |
+| **B.** IYCF as outcome | Does food insecurity shape what a child is actually fed? | No |
 
-- **Primary model: ordinal logistic regression** across the four severity categories, or
-  proportional-odds on the 0–8 score. Test the proportional-odds assumption and report
-  the test; `ordinal` is installed. If proportional odds fails, fall back to a partial
-  proportional-odds model rather than to dichotomisation.
-- **Alternative if the Rasch model is run** (§3.1): use the person severity measure as a
-  continuous outcome in linear regression. This is the FAO-standard treatment and is the
-  most statistically efficient option available.
-- **Check the shape first.** The raw score is heavily zero-inflated: 46.7% score 0, and
-  the remainder has a long right tail with a second bump at 7–8 (Appendix B, table 8).
-  That shape is a warning about proportional odds. If the assumption fails, a hurdle model
-  — logistic for any-versus-none, then a count or ordinal model on the 209 with a positive
-  score — is a better fit than forcing a single ordinal model or retreating to a binary one.
-- **Secondary, for comparability only:** binary logistic on moderate-or-severe (raw ≥ 4).
-  Every published EC-FIES and FIES paper reports this cut-off, so the thesis has to show
-  it. Present it as a secondary analysis whose purpose is comparability, and say so.
+**Recommendation: keep both, as two objectives.** They share the cleaned dataset, the
+covariates and the descriptive tables, so running both costs perhaps a day. Direction A
+discharges the approved synopsis and gives Chapter 4 its prevalence and predictor tables.
+Direction B is the more interesting question and carries the novel result. Dropping A
+leaves the thesis not matching its own title page; dropping B throws away the finding.
+Supervisor's call, and it is blocking (§7, question 2).
 
-The same rule applies on the exposure side — see §3.7.
+#### Direction B — the IYCF outcome
+
+**Which indicator is primary?** Ten are computable (§4.3), and testing all ten against
+EC-FIES is a multiplicity problem (§3.8). Pre-specify **one**.
+
+> **Recommended primary outcome: minimum dietary diversity**, analysed as the **0–8
+> food-group score**, with binary MDD reported alongside for comparability.
+
+Why MDD over the alternatives:
+
+- It is the most widely reported IYCF indicator, so the result is comparable to BDHS and
+  to the published literature.
+- It has an underlying score with real spread (Appendix B, table 1), so it can be analysed
+  without dichotomising (§3.7).
+- It is **not a composite**. MAD is MDD ∧ MMF ∧ MMFF, so a result on MAD cannot be
+  attributed to any one component. MAD is the more policy-relevant indicator and should be
+  reported, but it makes a poor primary outcome for a causal-sounding question.
+- The events budget is adequate: binary MDD gives 146 of 392 in the smaller cell, which
+  supports about 14 predictor degrees of freedom; the continuous score uses all 392.
+
+Events available if a different indicator is chosen instead:
+
+| Outcome | Yes | No | Limiting cell | Supports |
+|---|---|---|---|---|
+| ZVF | 166 | 226 | 166 | ~16 df |
+| MDD | 146 | 246 | 146 | ~14 df |
+| EFF | 254 | 138 | 138 | ~13 df |
+| MMF | 255 | 137 | 137 | ~13 df |
+| MAD | 112 | 280 | 112 | ~11 df |
+
+**Model form.** Linear regression on the 0–8 score is primary; Poisson gives the same
+answer here (§4.7) and either is defensible. Binary logistic on MDD is secondary, for
+comparability. Meal frequency, if modelled, is a count and takes Poisson.
+
+**Exposure form.** EC-FIES enters as the raw 0–8 score, per §3.7. Also report it as the
+four-level category, because that is what readers will look for and because it does not
+assume the effect is linear in the score.
+
+#### Direction A — the EC-FIES outcome
+
+If Direction A is retained as the first objective, the outcome still should not be
+dichotomised:
+
+- **Primary: ordinal logistic** across the four severity categories, or proportional-odds
+  on the 0–8 score. The effective sample is 392 rather than 80 events, so the
+  degrees-of-freedom budget stops being the binding constraint. Test the proportional-odds
+  assumption and report the test.
+- **Check the shape first.** The raw score is heavily zero-inflated: 46.7% score 0, with a
+  long right tail and a second bump at 7–8 (Appendix B, table 8). If proportional odds
+  fails, a hurdle model — logistic for any-versus-none, then an ordinal or count model on
+  the 209 with a positive score — fits better than forcing one ordinal model or retreating
+  to a binary one.
+- **Secondary, for comparability only:** binary logistic on moderate-or-severe. Every
+  published EC-FIES and FIES paper reports this cut-off, so the thesis has to show it.
+
+#### What does not change
+
+Covariates, clustering (§3.5) and the no-dichotomising rule (§3.7) are the same in both
+directions. So is the caution about common-method variance: EC-FIES, the barrier items and
+the Module E household diet all come from one respondent in one sitting, and Module F is
+the same 24-hour recall. Direction B puts an exposure and an outcome from the same
+instrument on opposite sides of a regression, which is exactly where shared-method bias
+does its damage. Name it in the limitations.
 
 ### 3.3 Software
 
@@ -398,6 +463,30 @@ Correlations below are Spearman, because none of these are normally distributed 
 several are heavily zero-inflated. Where wealth adjustment is reported it is a partial
 Spearman, controlling on ranks. In the final analysis these become terms in the ordinal
 model of §3.2 rather than pairwise correlations.
+
+### 3.8 Ten candidate outcomes — the multiplicity problem
+
+Direction B creates a problem the earlier design did not have. There are ten computable
+IYCF indicators, several underlying scales and a handful of plausible exposures. Testing
+every combination and reporting whichever comes up small is the most common way a null
+study turns into a false positive.
+
+Three rules, to be written into the methods chapter **before** the analysis is run:
+
+1. **One pre-specified primary outcome** — MDD as the 0–8 food-group score (§3.2) — with
+   one pre-specified primary exposure, the EC-FIES raw score. That is one test. It carries
+   the study's conclusion and needs no correction.
+2. **Everything else is secondary and labelled as such.** The other nine indicators are
+   reported as a descriptive panel with confidence intervals and no significance stars, or
+   with an explicit correction. Do not promote a secondary indicator to the headline
+   because it happened to reach 0.05.
+3. **Report every test that was run.** The panel in §4.7 is complete on purpose. A reader
+   who can see all ten nulls will trust the one primary result; a reader shown only the
+   interesting one has no way to judge it.
+
+The same discipline applies to the barrier items: eight items plus three summary scores is
+eleven tests. §4.5 handles it by leading with the total score, which the α of 0.776
+justifies, and treating the item-level table as descriptive.
 
 ---
 
@@ -660,6 +749,100 @@ figure and justify that heading.
 
 ---
 
+### 4.7 IYCF practice as the outcome — the flipped models
+
+Direction B fitted (§3.2). Outcome is the child's diet; exposure is the EC-FIES raw score;
+covariates are wealth quintile, mother's education, child age, child sex, urban/rural
+residence and current breastfeeding. n = 392 complete cases.
+
+**Primary model — food-group score (0–8), linear regression:**
+
+| Model | β per +1 EC-FIES point | 95% CI | p |
+|---|---|---|---|
+| Unadjusted | −0.045 | −0.113, +0.023 | 0.19 |
+| **Adjusted** | **−0.007** | **−0.080, +0.066** | **0.85** |
+| Poisson, adjusted (rate ratio) | 0.998 | 0.975, 1.022 | 0.87 |
+
+EC-FIES as a four-level category instead, adjusted, reference = food secure:
+
+| Category | β | 95% CI | p |
+|---|---|---|---|
+| Mild | −0.200 | −0.578, +0.179 | 0.30 |
+| Moderate | −0.142 | −0.676, +0.391 | 0.60 |
+| Severe | +0.069 | −0.567, +0.705 | 0.83 |
+
+**Secondary outcomes, adjusted logistic, odds ratio per +1 EC-FIES point:**
+
+| Outcome | OR | 95% CI | p |
+|---|---|---|---|
+| MDD | 0.988 | 0.890, 1.096 | 0.82 |
+| MAD | 0.986 | 0.880, 1.104 | 0.80 |
+| MMF | 0.989 | 0.893, 1.094 | 0.82 |
+| EFF | 0.966 | 0.870, 1.071 | 0.51 |
+| ZVF | 1.024 | 0.930, 1.128 | 0.63 |
+| Meal frequency (Poisson, rate ratio) | 0.986 | 0.958, 1.015 | 0.34 |
+
+**This is an informative null, not an underpowered one.** Write it in exactly these terms:
+
+- Across the full 0–8 EC-FIES range the adjusted effect on the food-group score is bounded
+  between **−0.64 and +0.53 food groups**. A difference larger than two-thirds of one food
+  group between a food-secure child and a maximally food-insecure one is ruled out.
+- For MDD, the adjusted odds ratio across a four-point EC-FIES shift — roughly secure
+  versus moderate — is **0.95 (0.63, 1.44)**.
+
+A null with intervals this tight is publishable. "No significant association was found",
+without them, is not.
+
+**Meal frequency is where confounding becomes visible.** The Poisson rate ratio is 0.963,
+p = 0.005, with age, sex, residence and breastfeeding in the model but **not** wealth or
+education. Adding those moves it to 0.986, p = 0.34. Socioeconomic position explains the
+whole of it. Report both models side by side; it is the clearest illustration in the
+dataset of why the adjusted model is the one to believe.
+
+#### What does predict child dietary diversity
+
+The same model, reading the other coefficients. Outcome is the 0–8 score, n = 392,
+R² = 0.227.
+
+| Predictor | Block p | Direction |
+|---|---|---|
+| **Household dietary diversity (Module E)** | **<0.0001** | +0.447 per household group |
+| **Child age** | **<0.0001** | +0.070 per month |
+| **Father's education** | **0.049** | +1.02 for higher secondary vs none |
+| Wealth quintile | 0.081 | +0.53 highest vs lowest |
+| Mother's education | 0.39 | — |
+| Child sex | 0.16 | — |
+| Urban residence | 0.21 | — |
+| Currently breastfed | 0.15 | — |
+| Household size | 0.47 | — |
+| **EC-FIES** | **0.36** | — |
+
+For binary MDD the same two dominate: household diversity OR 1.75 per group (p < 0.0001),
+age OR 1.09 per month (p = 0.0002).
+
+Three things to handle carefully in the write-up.
+
+**1. The household-diet coefficient is partly mechanical.** Module E and Module F share a
+respondent, a 24-hour window and overlapping food groups — if the household ate eggs, the
+child plausibly ate the same eggs. Cramér's V between matched household and child groups
+runs 0.20 to 0.39. The coefficient is real but it is not a clean causal estimate and must
+not be presented as one. Report the model with and without it: wealth becomes significant
+(p = 0.034) and father's education strengthens (p = 0.0012) when it is dropped, which is
+what you would expect if household diet sits on the path between income and what the child
+is fed.
+
+**2. Mother's education is null and father's is not.** That inverts the usual finding in
+the IYCF literature, where maternal education dominates. The two correlate at ρ = 0.56, so
+collinearity is real but not extreme enough to explain it away. Worth a paragraph rather
+than a footnote, and worth checking against mother's occupation (94% housewife) before
+concluding anything — in a sample where almost no mother is in paid work, the father's
+education may be carrying the household's entire socioeconomic signal.
+
+**3. EC-FIES stays null with household diversity out of the model** (β = +0.025, p = 0.50
+for the score; MDD OR 1.024, p = 0.67). The null is not an artefact of over-adjustment.
+
+---
+
 ## 5. Proposed table and figure plan
 
 **Tables**
@@ -682,9 +865,12 @@ figure and justify that heading.
 | 4.14 | **Barrier items: prevalence, mean ordinal level by severity, ρ** *(new, §4.5)* |
 | 4.15 | **Barrier scale: total and subscales, α, and wealth-adjusted associations** *(new, §4.5)* |
 | 4.16 | Bivariate associations with EC-FIES severity |
-| 4.17 | **Ordinal logistic across the four severity levels — primary model** *(§3.2)* |
-| 4.18 | Binary logistic on moderate-or-severe — secondary, for comparability only |
-| 4.19 | WHO indicators by EC-FIES severity, binary form — reported for completeness |
+| 4.17 | **Food-group score on EC-FIES and covariates — Direction B primary model** *(§4.7)* |
+| 4.18 | **All ten IYCF outcomes on EC-FIES, adjusted — the complete panel** *(§3.8, §4.7)* |
+| 4.19 | **Predictors of child dietary diversity, with and without household diet** *(§4.7)* |
+| 4.20 | Ordinal logistic on EC-FIES severity — Direction A primary model *(§3.2)* |
+| 4.21 | Binary logistic on moderate-or-severe — secondary, for comparability only |
+| 4.22 | WHO indicators by EC-FIES severity, binary form — for completeness |
 
 **Figures**
 
@@ -699,14 +885,15 @@ figure and justify that heading.
 | 4.5 | Food group consumption, all eight groups |
 | 4.6 | **Household vs child diet across EC-FIES severity — the two lines that diverge** *(new)* |
 | 4.7 | **Barrier score against EC-FIES raw score, with a loess fit** *(new)* |
-| 4.8 | Forest plot of adjusted odds ratios from the ordinal model |
-| 4.9 | Barriers, diverging stacked bar on the three-level scale by ECFI severity |
+| 4.8 | **Forest plot: all ten IYCF outcomes on EC-FIES, adjusted, with CIs** — the informative null in one image *(§4.7)* |
+| 4.9 | Forest plot of adjusted odds ratios from the Direction A ordinal model |
+| 4.10 | Barriers, diverging stacked bar on the three-level scale by ECFI severity |
 
 Figure 4.6 is the one to get right. Two series on one panel across the four severity
 categories: household 5-group mean (falling, 3.39 → 2.74) and child 8-group mean (flat,
 4.18 → 3.97). It states the thesis's central finding in a single image.
 
-Figure 4.9 must show all three response levels. A diverging stacked bar with Never,
+Figure 4.10 must show all three response levels. A diverging stacked bar with Never,
 Sometimes and Always is the whole point — the Sometimes/Always collapse is what hid two
 of the eight associations (§4.5).
 
@@ -729,9 +916,11 @@ Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0
 5. Write `03_descriptives.R` — Tables 4.1–4.6. Much of this already exists in
    `01_tables_chapter4.R` and can be lifted.
 6. Write `04_ecfies_rasch.R` — Tables 4.7–4.8, Figures 4.1–4.2. Install `RM.weights` first.
-7. Write `05_models.R` — Tables 4.16–4.19, Figure 4.8, with upazila-clustered SEs. The
-   **ordinal model is primary** (§3.2); the binary logistic is a secondary table.
-8. Write `06_barriers_spatial.R` — Tables 4.14–4.15, Figures 3.1, 4.4, 4.7, 4.9. Keep the
+7. Write `05_models.R` — Tables 4.16–4.22, Figures 4.8–4.9, with upazila-clustered SEs.
+   **Fix the primary outcome and primary exposure in writing first** (§3.2, §3.8).
+   Direction B, the IYCF outcome, is the main model set; Direction A's ordinal model
+   follows the same covariate structure.
+8. Write `06_barriers_spatial.R` — Tables 4.14–4.15, Figures 3.1, 4.4, 4.7, 4.10. Keep the
    barrier items on their three-level scale throughout (§3.7).
 9. Fill Chapter 3 (currently ~10 empty subsections) from the questionnaire, the WHO manual
    and this plan. §3.6 is close to publishable text for the IYCF measurement subsection.
@@ -745,31 +934,55 @@ thesis-writing is the long pole.
 
 ## 7. Open questions for the student / supervisor
 
+Questions 1 and 2 are blocking — nothing in Chapters 3 to 5 can be written until they are
+settled, and they interact. Ask them together.
+
 1. **Mixed-methods — in or out?** (§2.2) Blocking.
-2. **Rasch validation chapter — in or out?** (§3.1) It is the study's best novelty claim,
+2. **Does the supervisor accept the flipped outcome, and does the synopsis need amending?**
+   (§3.2) Blocking. The approved synopsis is titled *"Prevalence and predictors of food
+   insecurity"*, which is Direction A. Making an IYCF indicator the outcome is Direction B
+   and a different study. The recommendation is to keep both as two objectives, which
+   preserves the synopsis and keeps the finding. Note that the answer changes what
+   Chapter 5 argues, because Direction B's headline is a null (§4.7).
+3. **Which IYCF indicator is the pre-specified primary outcome?** (§3.2) The recommendation
+   is MDD as the 0–8 food-group score. Fix it in writing before the models are run, or the
+   ten-outcome panel in §4.7 becomes a fishing expedition (§3.8).
+4. **Is a null result acceptable as the headline?** (§4.7) EC-FIES predicts no IYCF
+   outcome, and the intervals are tight enough to state that positively rather than plead
+   low power. Defensible and publishable, but a committee expecting a positive association
+   should hear it now, not at the viva.
+5. **Rasch validation chapter — in or out?** (§3.1) It is the study's best novelty claim,
    and the data supports it, but it adds a psychometrics section to a nutrition thesis.
-3. **Primary outcome:** moderate-or-severe (n=80) or any-ECFI (n=209)? Affects model size.
-4. **The 88 "don't know" birth weights** (21.6%) — is a paper record available for any of
+6. **Direction A outcome form.** Largely superseded by §3.2, which recommends ordinal on
+   the four severity levels rather than a choice between two binary cut-offs. Still worth
+   confirming the committee expects moderate-or-severe to appear somewhere, since it is
+   the comparator every published EC-FIES paper reports.
+7. **The 88 "don't know" birth weights** (21.6%) — is a paper record available for any of
    them, or does birth weight enter the analysis as a 3-level variable with "unknown" kept
    as its own category?
-5. **The 700 g birth weight** — real, or a data-entry slip for 1700/2700?
-6. **Are the 2 out-of-range children** (5 and 24 months) to be kept or dropped? (§3.6.5)
-7. **Must the final analysis be reproducible in SPSS**, or is R output acceptable to the
+8. **The 700 g birth weight** — real, or a data-entry slip for 1700/2700?
+9. **Are the 2 out-of-range children** (5 and 24 months) to be kept or dropped? (§3.6.5)
+10. **Must the final analysis be reproducible in SPSS**, or is R output acceptable to the
    examination committee? (§3.3)
-8. **Was the sodas/malt/energy-drink row actually administered?** (§2.6f) It is "No" for all
+11. **Was the sodas/malt/energy-drink row actually administered?** (§2.6f) It is "No" for all
    407, and the Bengali form numbers two consecutive rows `Fswt5`. A field-team confirmation
    settles it.
-9. **Can the 11 meal-frequency contradictions be checked against paper forms?** (§2.6a) If
+12. **Can the 11 meal-frequency contradictions be checked against paper forms?** (§2.6a) If
    the forms are gone, say so and treat the food list as authoritative for ISSSF.
-10. **Is the dietary-buffering framing (§4.4) acceptable to the supervisor?** It reframes
+13. **Is the dietary-buffering framing (§4.4) acceptable to the supervisor?** It reframes
     hypotheses 3–5 from "confirmed/rejected" into a more interesting question, but it is a
     genuine change of story and the supervisor should sign off before Chapter 5 is written.
-11. **Is an ordinal primary model acceptable to the committee?** (§3.2) It is the better
+14. **Is an ordinal primary model acceptable to the committee?** (§3.2) It is the better
     analysis and it removes the events-per-variable constraint, but every comparable
     published EC-FIES paper dichotomises, and a committee expecting a binary logistic
     table will need the reasoning spelled out. The binary model is retained as a secondary
     analysis either way.
-12. **Wealth as confounder or mediator?** (§4.4) Meal frequency tracks food insecurity
+15. **Should mother's occupation replace or join mother's education in the models?** (§4.7)
+    Maternal education is null where paternal education is not, which inverts the usual
+    IYCF finding. With 94% of mothers recorded as housewives, paternal education may be
+    carrying the whole socioeconomic signal. Worth one model run before it is written up
+    as a substantive result.
+16. **Wealth as confounder or mediator?** (§4.4) Meal frequency tracks food insecurity
     crudely and not after wealth adjustment. Whether wealth confounds that relationship or
     sits on the causal path is not identifiable here, and the two readings support
     different policy conclusions. Worth a supervisor conversation before Chapter 5.
@@ -1041,7 +1254,7 @@ threshold.
 
 The binary collapse merges Sometimes with Always. For child refusal that buries a
 **22.4% Always group** inside an 81.1% "endorsed" figure, which is exactly why the item
-lost its association (binary p = 0.064, ordinal p = 0.0006). Figure 4.9 must show all
+lost its association (binary p = 0.064, ordinal p = 0.0006). Figure 4.10 must show all
 three levels.
 
 **10. Barrier scores.**
