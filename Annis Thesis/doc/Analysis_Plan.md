@@ -241,6 +241,11 @@ and the degrees-of-freedom budget stops being the binding constraint.
 - **Alternative if the Rasch model is run** (§3.1): use the person severity measure as a
   continuous outcome in linear regression. This is the FAO-standard treatment and is the
   most statistically efficient option available.
+- **Check the shape first.** The raw score is heavily zero-inflated: 46.7% score 0, and
+  the remainder has a long right tail with a second bump at 7–8 (Appendix B, table 8).
+  That shape is a warning about proportional odds. If the assumption fails, a hurdle model
+  — logistic for any-versus-none, then a count or ordinal model on the 209 with a positive
+  score — is a better fit than forcing a single ordinal model or retreating to a binary one.
 - **Secondary, for comparability only:** binary logistic on moderate-or-severe (raw ≥ 4).
   Every published EC-FIES and FIES paper reports this cut-off, so the thesis has to show
   it. Present it as a secondary analysis whose purpose is comparability, and say so.
@@ -891,3 +896,177 @@ All §4.3, §4.4 and §4.5 figures were recomputed from `MAIN.sav` on 2026-09-09
 2026-09-10 using exactly these expressions. They have **not** yet been reproduced in R against the client's
 environment — that is step 4 of §6, and the R output should be checked against the
 tables here before anything is written into the thesis.
+
+---
+
+## Appendix B. Frequency distributions of the analysis variables
+
+Every variable §3.7 puts on an underlying scale, tabulated. Computed from `MAIN.sav`,
+2026-09-10. These justify the non-dichotomised treatment variable by variable, and they
+show where it does **not** matter.
+
+**1. Child dietary diversity — food-group score (n = 407).** Mean 4.03, median 4, IQR 3–5.
+
+| Score | n | % | Cum % |
+|---|---|---|---|
+| 1 | 21 | 5.2 | 5.2 |
+| 2 | 57 | 14.0 | 19.2 |
+| 3 | 81 | 19.9 | 39.1 |
+| 4 | 93 | 22.9 | 61.9 |
+| **5** | **75** | **18.4** | **80.3** |
+| 6 | 53 | 13.0 | 93.4 |
+| 7 | 20 | 4.9 | 98.3 |
+| 8 | 7 | 1.7 | 100.0 |
+
+MDD is score ≥5. The cut-off sits one step above the mode, and **41.3% of the sample
+scores 4 or 5** — immediately either side of it. Those children differ by one food group
+and are placed in opposite categories.
+
+**2. Meal frequency — feeds yesterday (n = 407).** Mean 2.75, median 3, IQR 2–3.
+
+| Count | n | % | Cum % |
+|---|---|---|---|
+| 0 | 22 | 5.4 | 5.4 |
+| 1 | 51 | 12.5 | 17.9 |
+| 2 | 102 | 25.1 | 43.0 |
+| **3** | **135** | **33.2** | **76.2** |
+| 4 | 57 | 14.0 | 90.2 |
+| 5 | 23 | 5.7 | 95.8 |
+| 6 | 10 | 2.5 | 98.3 |
+| 7–10 | 7 | 1.7 | 100.0 |
+
+**This is the worst dichotomisation in the set.** MMF for a breastfed 9–23-month-old is
+≥3 feeds, and **135 children (33.2%) sit exactly on that value** — the modal response. A
+one-feed recall error moves a third of the sample across the threshold. It is why binary
+MMF returned p = 0.23 while the count returned p = 0.0023.
+
+**3. Household food groups, Module E (n = 407).** Mean 3.21, median 3, IQR 3–4.
+
+| Score | n | % | Cum % |
+|---|---|---|---|
+| 0 | 8 | 2.0 | 2.0 |
+| 1 | 13 | 3.2 | 5.2 |
+| 2 | 72 | 17.7 | 22.9 |
+| 3 | 157 | 38.6 | 61.4 |
+| 4 | 108 | 26.5 | 88.0 |
+| 5 | 49 | 12.0 | 100.0 |
+
+No WHO cut-off applies. Well spread, which is why the continuous form recovers a
+significant association (p = 0.0005) that an arbitrary ≥4 split did not (p = 0.084).
+
+**4. Fruit and vegetable rows (n = 407).** Mean 0.87, median 1, IQR 0–1.
+
+| Count | n | % | Cum % |
+|---|---|---|---|
+| **0** | **170** | **41.8** | **41.8** |
+| 1 | 160 | 39.3 | 81.1 |
+| 2 | 48 | 11.8 | 92.9 |
+| 3 | 22 | 5.4 | 98.3 |
+| 4–5 | 7 | 1.7 | 100.0 |
+
+ZVF is score = 0. **Here dichotomising costs almost nothing** — 81% of the sample is 0 or
+1, so the variable is close to binary already. Report ZVF as the headline and do not
+expect the count to add power.
+
+**5. Animal-source food rows (n = 407).** Mean 1.39, median 1, IQR 1–2.
+
+| Count | n | % | Cum % |
+|---|---|---|---|
+| 0 | 99 | 24.3 | 24.3 |
+| 1 | 134 | 32.9 | 57.2 |
+| 2 | 120 | 29.5 | 86.7 |
+| 3 | 32 | 7.9 | 94.6 |
+| 4 | 14 | 3.4 | 98.0 |
+| 5 | 8 | 2.0 | 100.0 |
+
+The theoretical range is 0–9 but nothing above 5 was observed. The binary EFF flag
+(65.4% yes) collapses scores 1–5 into one bin, which is why it showed nothing (p = 0.93)
+where the count showed ρ = −0.116, p = 0.021.
+
+**6. Sweet beverage items (n = 407).** Mean 0.22, median 0.
+
+| Count | n | % |
+|---|---|---|
+| 0 | 336 | 82.6 |
+| 1 | 54 | 13.3 |
+| 2 | 16 | 3.9 |
+| 3 | 1 | 0.2 |
+
+Heavily zero-inflated and effectively capped at 3, not 7. Like ZVF, the binary form loses
+little. Both scales agree that nothing is there.
+
+**7. Unhealthy (sentinel) food items (n = 407).** Mean 0.61, median 0.
+
+| Count | n | % |
+|---|---|---|
+| 0 | 222 | 54.5 |
+| 1 | 121 | 29.7 |
+| 2 | 64 | 15.7 |
+
+15.7% ate from **both** sentinel categories, sweet and salty, on the same day. The UFC
+flag hides that group inside its 45.5%.
+
+**8. EC-FIES raw score — the outcome (n = 392).** Mean 1.85, median 1, IQR 0–3.
+
+| Score | n | % | Cum % |
+|---|---|---|---|
+| 0 | 183 | 46.7 | 46.7 |
+| 1 | 45 | 11.5 | 58.2 |
+| 2 | 45 | 11.5 | 69.6 |
+| 3 | 39 | 9.9 | 79.6 |
+| **4** | **21** | **5.4** | **84.9** |
+| 5 | 16 | 4.1 | 89.0 |
+| 6 | 9 | 2.3 | 91.3 |
+| 7 | 15 | 3.8 | 95.2 |
+| 8 | 19 | 4.8 | 100.0 |
+
+Nearly half the sample scores zero, and the tail turns back up at 7–8. See §3.2 — this
+shape is the reason to test proportional odds before committing to a single ordinal model.
+Only 14.7% score 3 or 4, so the moderate/severe cut-off itself is comparatively
+well-placed; the problem with the binary outcome is lost information, not an unstable
+threshold.
+
+**9. Barrier items, all three levels.** "Do not know" excluded, counts shown separately.
+
+| Barrier | Never | Sometimes | Always | DK | n |
+|---|---|---|---|---|---|
+| Child refused food | 77 (18.9%) | 239 (58.7%) | **91 (22.4%)** | 0 | 407 |
+| Nutritious food unavailable locally | 244 (60.4%) | 151 (37.4%) | 9 (2.2%) | 3 | 404 |
+| Struggled to find time to prepare | 259 (64.0%) | 112 (27.7%) | 34 (8.4%) | 2 | 405 |
+| Could not travel to market | 273 (67.9%) | 114 (28.4%) | 15 (3.7%) | 5 | 402 |
+| Did not know what to give | 255 (67.6%) | 97 (25.7%) | 25 (6.6%) | **30** | 377 |
+| Not permitted to go to market | 319 (79.2%) | 62 (15.4%) | 22 (5.5%) | 4 | 403 |
+| Not permitted to decide purchases | 319 (78.8%) | 59 (14.6%) | 27 (6.7%) | 2 | 405 |
+| HH member discouraged feeding | 340 (84.0%) | 49 (12.1%) | 16 (4.0%) | 2 | 405 |
+
+The binary collapse merges Sometimes with Always. For child refusal that buries a
+**22.4% Always group** inside an 81.1% "endorsed" figure, which is exactly why the item
+lost its association (binary p = 0.064, ordinal p = 0.0006). Figure 4.9 must show all
+three levels.
+
+**10. Barrier scores.**
+
+| Score | Range | n | Mean | Median | IQR |
+|---|---|---|---|---|---|
+| Total (8 items, α = 0.776) | 0–13 observed of 0–16 | 366 | 3.08 | 2 | 1–5 |
+| Structural (I, J, M; α = 0.630) | 0–5 observed of 0–6 | 398 | 1.19 | 1 | 0–2 |
+| Agency (K, L, N; α = 0.689) | 0–5 observed of 0–6 | 399 | 0.72 | 0 | 0–1 |
+
+Total score distribution: 13.4% score 0, 24.6% score 1, and the tail runs to 13. The
+agency subscale is the most zero-heavy at 67.4%, which is worth noting before it goes into
+a model — it may need a hurdle treatment of its own, or to be used as an ordinal
+three-level collapse rather than a 0–6 count.
+
+**Summary — where dichotomising actually hurt.**
+
+| Variable | Cost of the binary form |
+|---|---|
+| Meal frequency | **Severe.** 33.2% sit exactly on the cut-off |
+| Child food-group score | **Severe.** 41.3% sit either side of the cut-off |
+| Barrier items | **Severe.** Merges a large Always group into Sometimes |
+| Household diet | **Severe.** Any split discards a well-spread 0–5 scale |
+| Animal-source foods | **Moderate.** EFF collapses scores 1–5 into one bin |
+| Unhealthy foods | **Moderate.** Hides the 15.7% who ate both categories |
+| Fruit and vegetables | **Low.** 81% already sit at 0 or 1 |
+| Sweet beverages | **Low.** 82.6% zero |
+| EC-FIES outcome | **Moderate.** Threshold is well-placed; the loss is information, not stability |
