@@ -32,6 +32,16 @@ plan had to guess at. Five consequences, each worked through below:
    wrong — wealth does predict diet. See §4.4, which also reports a **new positive
    finding** that gives the thesis its spine.
 
+**Added later the same week, after review:** the analysis in §4.4 and §4.5 had been run
+on the **binary** form of every indicator, which was a mistake. WHO's cut-offs exist for
+reporting prevalence; dichotomising a scale before testing an association discards
+information and costs power. Every association has been re-run on the underlying
+ordinal or count scale (new §3.7), and it changed the answers: two barrier items that
+looked null are strongly associated, one diet signal that looked real turns out to be
+confounded by wealth, and the household-diet finding is the one that survives. §3.2 has
+been rewritten to make the **ordinal EC-FIES score, not the binary moderate-or-severe
+split, the primary outcome**.
+
 ---
 
 ## 0. TL;DR — where the project actually stands
@@ -214,16 +224,28 @@ supports it. Needs `RM.weights` (FAO's own package) — not currently installed.
 
 ### 3.2 Which outcome for the regression models
 
-`n = 80` moderate-or-severe cases (20.4%). At the conventional 10 events per variable
-that allows roughly **8 predictor degrees of freedom** — not 8 variables, 8 *df*, so a
-5-level wealth quintile eats 4 of them. Budget accordingly; do not throw all 20 candidate
-predictors into one model.
+**The outcome should not be dichotomised.** The earlier version of this plan made binary
+logistic regression on moderate-or-severe (raw ≥ 4) the primary model. That throws away
+most of the outcome. It also creates an artificial sample-size problem: 80 events at ten
+events per variable buys about 8 predictor degrees of freedom, and a five-level wealth
+quintile eats four of them before anything else is in the model.
 
-- **Primary model:** binary logistic on moderate-or-severe (raw ≥ 4).
-- **Sensitivity:** ordinal logistic across all four severity levels (test the proportional
-  odds assumption; `ordinal` package is installed). Uses more information and buys back power.
-- **Also worth reporting:** binary logistic on *any* ECFI (raw ≥ 1), n = 209 — the larger
-  event count supports a fuller model.
+The EC-FIES raw score is an eight-item ordinal scale with α = 0.887 and a clean severity
+gradient (§3.1). Analysed on that scale, the effective sample is **392, not 80 events**,
+and the degrees-of-freedom budget stops being the binding constraint.
+
+- **Primary model: ordinal logistic regression** across the four severity categories, or
+  proportional-odds on the 0–8 score. Test the proportional-odds assumption and report
+  the test; `ordinal` is installed. If proportional odds fails, fall back to a partial
+  proportional-odds model rather than to dichotomisation.
+- **Alternative if the Rasch model is run** (§3.1): use the person severity measure as a
+  continuous outcome in linear regression. This is the FAO-standard treatment and is the
+  most statistically efficient option available.
+- **Secondary, for comparability only:** binary logistic on moderate-or-severe (raw ≥ 4).
+  Every published EC-FIES and FIES paper reports this cut-off, so the thesis has to show
+  it. Present it as a secondary analysis whose purpose is comparability, and say so.
+
+The same rule applies on the exposure side — see §3.7.
 
 ### 3.3 Software
 
@@ -333,6 +355,45 @@ available here. Using 6 ≤ age ≤ 23 months, two children fall outside (one 5-
 EC-FIES tables, and footnote the two out-of-range children plus the sensitivity result.
 Whatever is chosen, apply it identically to every table.
 
+### 3.7 Measurement scale — do not dichotomise for analysis
+
+WHO's indicators are binary **by construction**: MDD is the percentage reaching five of
+eight food groups, MMF the percentage reaching an age-specific meal count. That is the
+right form for *reporting* prevalence and for comparison against BDHS, and §4.3 keeps it.
+
+It is the wrong form for *testing associations*. Collapsing an eight-point food-group
+score to a yes/no at five, or a meal count to a yes/no at three, discards most of the
+variance and reduces power, and the loss is not evenly distributed — it is largest
+exactly where the underlying variable is concentrated near the cut-off. Re-running §4.4
+and §4.5 on the underlying scales changed four conclusions:
+
+| Construct | Binary form | Underlying scale | Effect of dichotomising |
+|---|---|---|---|
+| Household diet | ≥4 of 5 groups, p = 0.084 | 0–5 count, p = 0.0005 | **Hid a real association** |
+| Meal frequency | MMF achieved, p = 0.23 | 0–10 count, p = 0.0023 | **Hid an association** (but see §4.4 — it is confounded) |
+| Barrier: food unavailable locally | Sometimes/Always, p = 0.077 | 1–3 ordinal, p < 10⁻⁶ | **Hid a strong association** |
+| Barrier: child refused food | Sometimes/Always, p = 0.064 | 1–3 ordinal, p = 0.0006 | **Hid an association** |
+
+**Rule for the whole analysis.** Report the WHO binary indicators in the descriptive
+tables, because that is what the indicators are for. Do every association test, and fit
+every model, on the underlying scale:
+
+| Variable | Analyse as |
+|---|---|
+| EC-FIES | 0–8 raw score, or four-level ordinal, or Rasch person measure (§3.2) |
+| Child dietary diversity | 0–8 food-group score |
+| Meal frequency | 0–10 count from `F_A_freq_food` |
+| Fruit and vegetable intake | 0–5 count of the five fruit/veg rows, not the ZVF flag |
+| Animal-source foods | 0–9 count of the milk, egg and flesh rows, not the EFF flag |
+| Sweet beverages / unhealthy foods | 0–7 and 0–2 item counts |
+| Household diet | 0–5 group count from Module E |
+| Barrier items | 1–3 ordinal per item; 0–16 total and two 0–6 subscales (§4.5) |
+
+Correlations below are Spearman, because none of these are normally distributed and
+several are heavily zero-inflated. Where wealth adjustment is reported it is a partial
+Spearman, controlling on ranks. In the final analysis these become terms in the ordinal
+model of §3.2 rather than pairwise correlations.
+
 ---
 
 ## 4. What the data already shows
@@ -354,6 +415,10 @@ All figures below computed directly from `MAIN.sav`. Intervals are Wilson 95% CI
 Denominator 392 — the complete-case EC-FIES sample.
 
 ### 4.2 Predictors — bivariate, χ² on moderate-or-severe
+
+The categorical predictors below are legitimately tested against the binary split, since
+they are themselves categorical and the table is descriptive. Everything with an
+underlying scale is handled in §4.4 and §4.5 instead, per §3.7.
 
 **Strongly associated:**
 
@@ -411,31 +476,62 @@ eggs 45.0%, flesh foods 44.2%, vitamin-A rich fruit & veg 38.3%, other fruit & v
 dairy 34.4%, pulses/nuts/seeds 24.3%. Mean food-group score 4.03 of 8; the modal score is 4
 (93 children), and 21 children scored 1 (breast milk only — see §2.6g).
 
-### 4.4 The null result, corrected and strengthened
+### 4.4 Diet and food insecurity — what actually tracks what
 
-**None of the seven child-diet indicators is associated with EC-FIES severity.**
+Every test below is on the underlying scale, per §3.7. Spearman ρ against the EC-FIES
+raw score (0–8, n = 392), with a partial Spearman adjusting for wealth quintile.
 
-Percent achieving each indicator, by EC-FIES category, with χ² against moderate-or-severe:
-
-| Indicator | Secure | Mild | Moderate | Severe | p |
+| Measure | Range | ρ vs EC-FIES | p | ρ adj. wealth | p |
 |---|---|---|---|---|---|
-| MDD achieved | 41.0 | 34.1 | 32.6 | 35.3 | 0.55 |
-| MMF achieved | 69.4 | 62.8 | 60.9 | 55.9 | 0.23 |
-| MAD achieved | 31.7 | 27.9 | 23.9 | 20.6 | 0.23 |
-| EFF egg/flesh consumed | 66.7 | 62.8 | 65.2 | 61.8 | 0.93 |
-| SwB sweet beverage | 20.8 | 7.0 | 21.7 | 29.4 | 0.05 |
-| UFC unhealthy food | 39.3 | 56.6 | 45.7 | 35.3 | 0.48 |
-| ZVF zero veg or fruit | 42.1 | 41.9 | 43.5 | 44.1 | 0.87 |
+| **Household food groups (Module E)** | 0–5 | **−0.176** | **0.0005** | **−0.113** | **0.025** |
+| Meal frequency count | 0–10 | −0.153 | 0.0023 | −0.044 | 0.38 |
+| Animal-source food rows | 0–9 | −0.116 | 0.021 | — | — |
+| Fruit and vegetable rows | 0–5 | −0.095 | 0.061 | — | — |
+| Child food-group score | 0–8 | −0.086 | 0.090 | −0.042 | 0.41 |
+| Unhealthy food items | 0–2 | +0.084 | 0.095 | — | — |
+| Sweet beverage items | 0–7 | −0.023 | 0.64 | — | — |
+| Food rows endorsed | 0–17 | +0.008 | 0.88 | — | — |
 
-Mean food-group score: 4.18 secure, 3.81 mild, 3.87 moderate, 3.97 severe (Mann-Whitney
-p = 0.50 secure vs moderate/severe). MAD and MMF are the only two that fall monotonically,
-and neither reaches significance on a trend test (p = 0.12 and 0.07). The SwB p-value of
-0.05 is not a gradient — the mild group sits at 7.0% between two ~21% groups, and the
-trend test returns p = 0.59. Treat it as noise, not a finding.
+Means by severity category:
 
-**The earlier interpretation was wrong and must be corrected.** This plan previously said
-complementary feeding quality is "uniformly poor across the whole socioeconomic range."
-It is not. Wealth predicts child diet perfectly clearly:
+| Measure | Secure | Mild | Moderate | Severe | Kruskal-Wallis p |
+|---|---|---|---|---|---|
+| Household food groups (0–5) | 3.39 | 3.14 | 3.11 | 2.74 | 0.0014 |
+| Meal frequency (0–10) | 3.04 | 2.64 | 2.54 | 2.24 | 0.013 |
+| Child food-group score (0–8) | 4.18 | 3.81 | 3.87 | 3.97 | 0.33 |
+| Fruit and vegetable rows (0–5) | 1.01 | 0.73 | 0.74 | 0.79 | 0.28 |
+| Animal-source rows (0–9) | 1.51 | 1.28 | 1.22 | 1.21 | 0.13 |
+| Food rows endorsed (0–17) | 3.92 | 3.60 | 4.00 | 4.21 | 0.75 |
+
+Three things follow, and they are not the same thing.
+
+**1. Child dietary diversity genuinely does not track food insecurity.** This survives the
+move off the binary cut-off. The 0–8 score gives ρ = −0.086, p = 0.09 crude, and p = 0.41
+once wealth is controlled. The count of all 17 food rows is flat to three decimal places.
+This is a real null, not an artefact of dichotomising, and it can be reported as one.
+
+**2. Meal frequency looked like a real signal and is not an independent one.** The binary
+MMF indicator gave p = 0.23; the 0–10 count gives p = 0.0023, with a clean monotone fall
+from 3.04 meals in food-secure children to 2.24 in the severe group. It is robust to age
+adjustment (p = 0.0011), to restricting to the 9–23-month block with its single recall
+window (p = 0.0021), to excluding the 11 contradictory records of §2.6a (p = 0.0030), and
+to excluding all 22 zero-meal records (p = 0.0045). **But it disappears entirely on
+adjustment for wealth** (ρ = −0.044, p = 0.38). Wealth drives both. Report the crude
+gradient, report the adjusted null, and do not claim an independent effect of food
+insecurity on meal frequency. Whether wealth is a confounder or a mediator here is not
+identifiable in a cross-sectional design; say so rather than picking one.
+
+**3. Household diet is the finding.** The Module E five-group count falls monotonically
+across severity, ρ = −0.176, p = 0.0005, and it is **the only diet measure that survives
+wealth adjustment** (ρ = −0.113, p = 0.025). It is also unaffected by age adjustment
+(p = 0.0004).
+
+Put together: **as food insecurity deepens the household's diet narrows, and the child's
+does not.** That is dietary buffering, and this dataset captures it unusually well because
+household and child diet were measured in the same interview with parallel food groups.
+
+The earlier claim in this plan that complementary feeding is "uniformly poor across the
+whole socioeconomic range" was wrong and is withdrawn. Wealth predicts child diet clearly:
 
 | Wealth quintile | Moderate/severe ECFI | Child food-group score | MDD achieved |
 |---|---|---|---|
@@ -445,30 +541,20 @@ It is not. Wealth predicts child diet perfectly clearly:
 | Fourth | 12.3% | 3.88 | 31.7% |
 | Highest | 11.2% | 4.53 | 51.9% |
 
-Wealth versus child food-group score: r = +0.15, p = 0.003. So wealth moves diet, and
-wealth moves EC-FIES, but **EC-FIES and diet do not move together.** That is a sharper and
-more defensible claim than the old one, and it is the finding the discussion should be
-built around.
+Wealth versus child food-group score: r = +0.15, p = 0.003. So wealth moves diet and wealth
+moves food insecurity, but food insecurity and diet do not move together once wealth is
+held constant. That is the sharp version of the claim and the one the discussion should
+be built on.
 
-**And there is a positive result that makes sense of it.** The household-level 5-group
-score from Module E *does* track EC-FIES severity, cleanly and significantly:
+**Two counts to treat carefully.** The unhealthy-food count (0.52, 0.76, 0.65, 0.50) and
+the sweet-beverage count (0.25, 0.09, 0.28, 0.47) both return significant Kruskal-Wallis
+tests, p = 0.023 and 0.0012, but neither is monotone — the mild group is the outlier in
+both, high on unhealthy food and low on sweet drinks. Neither has a trend (ρ p = 0.10 and
+0.64). Do not build an argument on either. Report the four means and say the pattern is
+non-monotone.
 
-| EC-FIES category | Mean household food groups (of 5) |
-|---|---|
-| Food secure | 3.39 |
-| Mild | 3.14 |
-| Moderate | 3.11 |
-| Severe | 2.74 |
-
-Trend across the four levels p = 0.0006; Mann-Whitney secure vs moderate/severe p = 0.009.
-
-So: **as food insecurity deepens, the household's diet narrows — and the child's does not.**
-That is dietary buffering, and it is a well-documented phenomenon that this dataset happens
-to capture unusually well, because it measured household and child diet in the same
-interview with parallel food groups.
-
-A pass-through analysis supports it. Among households that ate a given food group
-yesterday, the proportion whose child also ate it:
+**Pass-through.** Among households that ate a given group yesterday, the proportion whose
+child also ate it:
 
 | Food group | Households eating it | Pass-through to child | Secure | Mod/severe | p |
 |---|---|---|---|---|---|
@@ -478,66 +564,87 @@ yesterday, the proportion whose child also ate it:
 | Eggs/flesh foods | 313 | 73.5% | 71.4% | 78.7% | 0.39 |
 | Pulses/nuts/seeds | 211 | 37.0% | 31.2% | 52.3% | **0.017** |
 
-Pass-through does not fall as food insecurity worsens for any group, and for pulses it
-rises sharply — food-insecure households that have pulses in the house are markedly more
-likely to feed them to the child, plausibly as a cheap protein substituting for eggs and
-flesh foods. **Caveat:** that is one significant result out of five tests, and it would not
-survive a Bonferroni correction. Report it as suggestive and say so.
+Pass-through does not fall as food insecurity worsens for any group, which is what
+buffering predicts. The pulses result is one significant test out of five and would not
+survive a Bonferroni correction; report it as suggestive and say so. Two structural facts
+stand regardless of significance: **vitamin-A rich fruit and vegetables reach the child in
+fewer than half of the households that eat them, and pulses in barely a third.** The gap
+between what a household eats and what a 6–23-month-old is given is a programmatic target
+in itself, and it is invisible to any indicator computed on the child alone.
 
-Two structural facts worth noting in the discussion regardless of significance:
-**vitamin-A rich fruit and vegetables reach the child in fewer than half of the households
-that eat them (47.6%), and pulses in barely a third (37.0%)**. The gap between what a
-household eats and what a 6–23-month-old is given is a programmatic target in itself, and
-it is invisible to any indicator computed on the child alone.
+**How to frame it.** An experience-based scale and a 24-hour dietary recall measure
+different constructs. EC-FIES captures worry, coping and perceived adequacy at household
+level; the food-group score captures what entered the child's mouth yesterday. Both have
+an economic root, which is why both correlate with wealth, but they are not substitutes
+and this study shows it directly. The policy reading is that income transfers alone will
+not fix diet quality here: 41.8% of children ate no fruit or vegetable yesterday, and that
+number barely moves between food-secure and severely food-insecure households. That
+contradicts hypotheses 3, 4 and 5 as the draft frames them, and needs to be reported as a
+finding rather than buried.
 
-**How to frame all of this.** An experience-based scale and a 24-hour dietary recall are
-measuring different constructs. EC-FIES captures worry, coping and perceived adequacy at
-the household level; MDD captures what actually entered the child's mouth yesterday. Both
-have an economic root, which is why both correlate with wealth, but they are not
-substitutes for one another and this study shows it directly. The policy reading is that
-income transfers alone will not fix diet quality here: **41.8% of children ate no fruit or
-vegetable yesterday, and that number barely moves between food-secure and severely
-food-insecure households.** That is a stronger message than a positive association would
-have been, and it directly contradicts hypotheses 3, 4 and 5 as the draft frames them —
-which needs to be reported as a finding, not buried.
+### 4.5 Barriers to feeding (module G.I–G.P) — the strongest signal in the dataset
 
-### 4.5 Barriers to feeding (module G.I–G.P) — answers RQ4 without qualitative work
+The barrier items were **not** pooled across the two age blocks in the SPSS file, unlike
+the EC-FIES items. Pooling `G_1_*` and `G_2_*` recovers the full sample. The items are
+**three-level** — Never / Sometimes / Always — and collapsing them to a binary was the
+worst of the dichotomisations in the earlier draft, because it hid two associations
+entirely.
 
-The barrier items were **not** pooled across the two age blocks in the SPSS file (unlike the
-EC-FIES items, which were). Pooling `G_1_*` and `G_2_*` recovers the full sample and is
-straightforward — the two blocks differ only in the recall window, exactly as the EC-FIES
-items do. Percent reporting "sometimes" or "always", "don't know" treated as missing:
+Prevalence uses "Sometimes or Always", which is the reportable form; the association tests
+use the 1–3 ordinal scale. "Do not know" is treated as missing throughout.
 
-| Barrier | All (n=407) | Secure | Mod/severe | p |
-|---|---|---|---|---|
-| Child refused food / spat it out | **81.1** | 78.8 | 88.8 | 0.064 |
-| Nutritious food unavailable in local shops | 39.6 | 37.0 | 48.7 | 0.077 |
-| Struggled to find time to prepare food | 36.0 | 24.4 | **73.4** | <0.001 |
-| Did not know what to give or how to prepare | 32.4 | 22.4 | **67.1** | <0.001 |
-| Could not travel to shops/markets | 32.1 | 27.1 | 48.7 | <0.001 |
-| Not permitted to decide what to buy | 21.2 | 16.1 | 39.2 | <0.001 |
-| Not permitted to go to the shop/market | 20.8 | 15.8 | 37.2 | <0.001 |
-| Household member discouraged feeding | 16.0 | 9.3 | 36.7 | <0.001 |
+| Barrier | Sometimes/Always | Secure | Mild | Mod | Sev | ρ vs raw | ordinal p | binary p |
+|---|---|---|---|---|---|---|---|---|
+| Struggled to find time to prepare | 36.0% | 1.21 | 1.42 | 1.85 | 1.94 | **+0.402** | <10⁻¹⁵ | <0.001 |
+| Household member discouraged feeding | 16.0% | 1.05 | 1.18 | 1.44 | 1.59 | +0.332 | <10⁻¹⁰ | <0.001 |
+| Did not know what to give | 32.4% | 1.24 | 1.29 | 1.62 | 2.10 | +0.317 | <10⁻⁹ | <0.001 |
+| Nutritious food unavailable locally | 39.6% | 1.25 | 1.56 | 1.46 | 1.72 | +0.282 | <10⁻⁷ | **0.077** |
+| Could not travel to market | 32.1% | 1.21 | 1.41 | 1.62 | 1.55 | +0.269 | <10⁻⁶ | <0.001 |
+| Not permitted to go to market | 20.8% | 1.16 | 1.23 | 1.38 | 1.67 | +0.247 | <10⁻⁵ | <0.001 |
+| Not permitted to decide purchases | 21.2% | 1.18 | 1.23 | 1.47 | 1.68 | +0.221 | <10⁻⁴ | <0.001 |
+| Child refused food | 81.1% | 1.92 | 2.06 | 2.22 | 2.21 | +0.172 | 0.0006 | **0.064** |
 
-Per-item denominators are 377–407; the knowledge item carries 30 "don't know" responses,
-by far the most of any item, which is itself worth reporting (§2.6h).
+Columns 3–6 are mean level on the 1–3 scale. Per-item denominators are 377–407; the
+knowledge item carries 30 "don't know" responses, by far the most of any item, which is
+itself worth reporting (§2.6h).
 
-Three distinct clusters: **child-level** (refusal, 81.1%), **structural** (market
-availability, transport, time, 32–40%), and **maternal agency** (permission, decision
-authority, discouragement, 16–21%).
+**All eight barriers are associated with EC-FIES severity.** The binary analysis reported
+six, missing local food availability and child refusal — the two bolded p-values above.
+Both are strongly significant once the Always/Sometimes distinction is kept.
 
-**This is the other half of the story in §4.4.** Six of the eight barriers are very strongly
-associated with EC-FIES severity, while none of the seven diet indicators is. Caregivers in
-food-insecure households report markedly more difficulty feeding their children — time,
-knowledge, mobility, permission, family opposition — and yet the measured diet of those
-children is no worse. The two most strongly associated barriers are not about money at all:
-**time to prepare food (24.4% → 73.4%) and knowing what to feed (22.4% → 67.1%)**. The
-agency cluster is the most publishable angle and the one a nutrition-education or
-women's-empowerment intervention could actually act on.
+**The items form a usable scale.** Cronbach's α = 0.776 across the eight items (n = 366).
+That justifies summing them, which is more informative than eight separate tests and
+avoids the multiplicity problem:
 
-Note the direction of causality is not identifiable here, and the barrier items and the
-EC-FIES items sit in the same module and share a respondent, a recall window and a framing
-about lack of money. Some of this association is common-method variance. Say so.
+| Score | Range | Secure | Mild | Mod | Sev | ρ vs raw | p | ρ adj. wealth | p |
+|---|---|---|---|---|---|---|---|---|---|
+| **Total barrier score** | 0–16 | 2.12 | 3.05 | 4.54 | 6.26 | **+0.395** | 1×10⁻¹⁴ | +0.307 | 4×10⁻⁹ |
+| Structural subscale (I, J, M) | 0–6 | 0.67 | 1.36 | 1.91 | 2.13 | **+0.421** | 7×10⁻¹⁸ | +0.327 | 5×10⁻¹¹ |
+| Agency subscale (K, L, N) | 0–6 | 0.39 | 0.62 | 1.26 | 1.97 | +0.317 | 2×10⁻¹⁰ | +0.230 | 5×10⁻⁶ |
+| Knowledge item (O) | 0–2 | 0.24 | 0.29 | 0.62 | 1.10 | +0.317 | 6×10⁻¹⁰ | +0.226 | 1×10⁻⁵ |
+| Child refusal (P) | 0–2 | 0.92 | 1.06 | 1.22 | 1.21 | +0.172 | 6×10⁻⁴ | +0.145 | 0.004 |
+
+Subscale α: structural 0.630, agency 0.689. Modest, and they should be reported as such,
+but both are adequate for a three-item scale and the two subscales behave differently
+enough to be worth keeping apart.
+
+**The structural subscale at ρ = +0.421 is the strongest association anywhere in this
+dataset** — stronger than wealth quintile, stronger than either parent's education. Every
+score survives adjustment for wealth, which none of the diet measures except household
+diversity does.
+
+**This is the other half of §4.4.** Caregivers in food-insecure households report markedly
+more difficulty feeding their children — time, knowledge, mobility, permission, family
+opposition — and yet the measured diet of those children is no worse. The two strongest
+individual barriers are not about money at all: time to prepare food and knowing what to
+feed. The agency cluster is the most publishable angle and the one a nutrition-education
+or women's-empowerment intervention could act on.
+
+**Two cautions to state in the limitations.** Direction of causality is not identifiable
+in a cross-sectional design. And the barrier items sit in the same module as the EC-FIES
+items, share a respondent, a recall window and a framing about lack of money, so some of
+this association is common-method variance. That is a real threat to the interpretation
+and it should be named, not buried — it is the most likely reviewer objection.
 
 ### 4.6 Unused asset: GPS coordinates
 
@@ -565,12 +672,14 @@ figure and justify that heading.
 | 4.9 | Prevalence by division and residence *(already drafted — keep)* |
 | 4.10 | **All ten IYCF indicators with 95% CIs, against BDHS 2022** *(expanded)* |
 | 4.11 | **Eight MDD food groups, and the 17 questionnaire rows behind them** *(new)* |
-| 4.12 | **IYCF indicators by EC-FIES severity — the null result** *(new, §4.4)* |
+| 4.12 | **Diet measures on their underlying scales vs EC-FIES, crude and wealth-adjusted** *(new, §4.4)* |
 | 4.13 | **Household (Module E) vs child (Module F) food groups and pass-through** *(new, §4.4)* |
-| 4.14 | Bivariate associations with moderate-or-severe ECFI |
-| 4.15 | **Multivariable logistic regression — adjusted ORs** |
-| 4.16 | Ordinal logistic across four severity levels (sensitivity) |
-| 4.17 | Barriers to feeding by ECFI severity, pooled across both age blocks |
+| 4.14 | **Barrier items: prevalence, mean ordinal level by severity, ρ** *(new, §4.5)* |
+| 4.15 | **Barrier scale: total and subscales, α, and wealth-adjusted associations** *(new, §4.5)* |
+| 4.16 | Bivariate associations with EC-FIES severity |
+| 4.17 | **Ordinal logistic across the four severity levels — primary model** *(§3.2)* |
+| 4.18 | Binary logistic on moderate-or-severe — secondary, for comparability only |
+| 4.19 | WHO indicators by EC-FIES severity, binary form — reported for completeness |
 
 **Figures**
 
@@ -584,12 +693,17 @@ figure and justify that heading.
 | 4.4 | Division choropleth, moderate-or-severe prevalence |
 | 4.5 | Food group consumption, all eight groups |
 | 4.6 | **Household vs child diet across EC-FIES severity — the two lines that diverge** *(new)* |
-| 4.7 | Forest plot of adjusted odds ratios |
-| 4.8 | Barriers, diverging stacked bar by ECFI severity |
+| 4.7 | **Barrier score against EC-FIES raw score, with a loess fit** *(new)* |
+| 4.8 | Forest plot of adjusted odds ratios from the ordinal model |
+| 4.9 | Barriers, diverging stacked bar on the three-level scale by ECFI severity |
 
 Figure 4.6 is the one to get right. Two series on one panel across the four severity
 categories: household 5-group mean (falling, 3.39 → 2.74) and child 8-group mean (flat,
 4.18 → 3.97). It states the thesis's central finding in a single image.
+
+Figure 4.9 must show all three response levels. A diverging stacked bar with Never,
+Sometimes and Always is the whole point — the Sometimes/Always collapse is what hid two
+of the eight associations (§4.5).
 
 Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0072B2` blue,
 `#E69F00` amber, `#009E73` green.
@@ -604,14 +718,16 @@ Figures use the Okabe-Ito colour-blind-safe palette; **no red anywhere** — `#0
    categories, pool the barrier items across both age blocks, label everything, save
    `Data/ecfies_clean.rds`. Ship a cleaning log covering §2.3 and §2.6.
 4. Write `02_iycf.R` — all ten indicators, coded straight from the WHO algorithms in
-   Part 2 §C with the mapping in §3.6.2, plus Module E household groups and pass-through.
-   Tables 4.10–4.13, Figures 4.5–4.6. **Cross-check the four new indicators against the
+   Part 2 §C with the mapping in §3.6.2, plus the continuous and count forms of Appendix A,
+   Module E household groups and pass-through. Tables 4.10–4.13 and 4.19, Figures 4.5–4.6. **Cross-check the four new indicators against the
    BDHS 2022 report before writing a word about them.**
 5. Write `03_descriptives.R` — Tables 4.1–4.6. Much of this already exists in
    `01_tables_chapter4.R` and can be lifted.
 6. Write `04_ecfies_rasch.R` — Tables 4.7–4.8, Figures 4.1–4.2. Install `RM.weights` first.
-7. Write `05_models.R` — Tables 4.14–4.16, Figure 4.7, with upazila-clustered SEs.
-8. Write `06_barriers_spatial.R` — Table 4.17, Figures 3.1, 4.4, 4.8.
+7. Write `05_models.R` — Tables 4.16–4.19, Figure 4.8, with upazila-clustered SEs. The
+   **ordinal model is primary** (§3.2); the binary logistic is a secondary table.
+8. Write `06_barriers_spatial.R` — Tables 4.14–4.15, Figures 3.1, 4.4, 4.7, 4.9. Keep the
+   barrier items on their three-level scale throughout (§3.7).
 9. Fill Chapter 3 (currently ~10 empty subsections) from the questionnaire, the WHO manual
    and this plan. §3.6 is close to publishable text for the IYCF measurement subsection.
 10. Write Chapters 4–7 against the finished tables.
@@ -643,6 +759,15 @@ thesis-writing is the long pole.
 10. **Is the dietary-buffering framing (§4.4) acceptable to the supervisor?** It reframes
     hypotheses 3–5 from "confirmed/rejected" into a more interesting question, but it is a
     genuine change of story and the supervisor should sign off before Chapter 5 is written.
+11. **Is an ordinal primary model acceptable to the committee?** (§3.2) It is the better
+    analysis and it removes the events-per-variable constraint, but every comparable
+    published EC-FIES paper dichotomises, and a committee expecting a binary logistic
+    table will need the reasoning spelled out. The binary model is retained as a secondary
+    analysis either way.
+12. **Wealth as confounder or mediator?** (§4.4) Meal frequency tracks food insecurity
+    crudely and not after wealth adjustment. Whether wealth confounds that relationship or
+    sits on the causal path is not identifiable here, and the two readings support
+    different policy conclusions. Worth a supervisor conversation before Chapter 5.
 
 ---
 
@@ -734,7 +859,35 @@ cat <- cut(raw, c(-Inf, 0, 3, 6, 8),
            labels = c("Food secure", "Mild", "Moderate", "Severe"))
 ```
 
-All §4.3 and §4.4 figures were recomputed from `MAIN.sav` on 2026-09-09 using exactly
-these expressions. They have **not** yet been reproduced in R against the client's
+**Continuous and ordinal forms used for every association test (§3.7).** These are the
+analysis variables; the binary indicators above are for reporting prevalence only.
+
+```r
+FGS                                          # 0-8, as constructed above
+meals    <- z(F_A_freq_food)                 # 0-10 count
+fv_rows  <- (F_C == 1) + (F_E == 1) + (F_F == 1) + (F_G == 1) + (F_H == 1)      # 0-5
+asf_rows <- (F_I == 1) + (F_J == 1) + (F_K == 1) + (F_M == 1) + (F_L == 1) +
+            (F_A_1 == 1) + (F_A_2 == 1) + (F_A_3 == 1) + (F_O == 1)             # 0-9
+all_rows <- sum of the 17 food rows == 1                                        # 0-17
+sweet_n  <- sum of the 7 Fswt indicators == 1                                   # 0-7
+ufc_n    <- (F_P_SWEET_FOODS == 1) + (F_Q_SALTY_FOODS == 1)                     # 0-2
+HHS      <- as above                                                            # 0-5
+
+# barrier items keep all three levels; 8 = "Do not know" -> NA
+bar_K    <- na_if(coalesce(G_1_K_..., G_2_K_...), 8)        # 1 Never 2 Sometimes 3 Always
+bar_tot    <- sum(bar_I .. bar_P) - 8                       # 0-16, alpha = 0.776
+bar_struct <- (bar_I + bar_J + bar_M) - 3                   # 0-6,  alpha = 0.630
+bar_agency <- (bar_K + bar_L + bar_N) - 3                   # 0-6,  alpha = 0.689
+
+# EC-FIES stays on its raw 0-8 scale for all association testing (§3.2)
+```
+
+Associations are Spearman ρ against `raw`. Wealth adjustment is a partial Spearman:
+rank-transform both variables and the control, regress each rank on the control, correlate
+the residuals. In the final analysis these become terms in the ordinal model, not pairwise
+correlations.
+
+All §4.3, §4.4 and §4.5 figures were recomputed from `MAIN.sav` on 2026-09-09 and
+2026-09-10 using exactly these expressions. They have **not** yet been reproduced in R against the client's
 environment — that is step 4 of §6, and the R output should be checked against the
 tables here before anything is written into the thesis.
