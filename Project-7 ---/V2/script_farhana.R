@@ -333,6 +333,7 @@ save_km_pdf <- function(km_obj, filepath, width = 8, height = 6) {
 
 save_km_pdf(km_overall,   "Graph/Fig1_KM_Overall_v2.pdf")
 save_km_pdf(km_hrp_her2p, "Graph/Fig2_KM_HR+_HER2+_farhana.pdf")
+save_km_pdf(km_hrn_her2p, "Graph/Fig2_KM_HR-_HER2+_farhana.pdf")
 save_km_pdf(km_hrp_her2n, "Graph/Fig3_KM_HR+_HER2-_farhana.pdf")
 save_km_pdf(km_hrn_her2n, "Graph/Fig4_KM_HR-_HER2-_farhana.pdf")
 
