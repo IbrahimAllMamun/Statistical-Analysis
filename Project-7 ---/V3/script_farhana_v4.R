@@ -389,7 +389,7 @@ data <- raw %>%
 
     # QUERY 5: recurrence detail (defined for recurrent MBC only).
     prestage = factor(prestage, levels = c("Stage 1", "Stage 2", "Stage 3")),
-    rec_incomplete = factor(ifelse(has_code(cause_l, "1"), "Yes", "No"), levels = c("No", "Yes")),
+    rec_incomplete = factor(ifelse(has_code(cause_l, "1"), "Treatment incmplete", "Treatment completed but not within time"), levels = c("Treatment completed but not within time", "Treatment incmplete")),
     rec_ct_incomplete = factor(ifelse(has_code(cause_l, "a"), "Yes", "No"), levels = c("No", "Yes")),
     rec_rt_incomplete = factor(ifelse(has_code(cause_l, "b"), "Yes", "No"), levels = c("No", "Yes")),
     rec_not_in_time = factor(ifelse(has_code(cause_l, "2"), "Yes", "No"), levels = c("No", "Yes")),
@@ -537,18 +537,21 @@ her2_pos_uptake <- data %>% filter(her2 == "Positive") %>%
 # ----------------------------------------------------------
 rec <- data %>% filter(mbc_type == "Recurrent MBC")
 table2b <- rec %>%
-  select(prestage, rec_incomplete, rec_ct_incomplete, rec_rt_incomplete,
-         rec_not_in_time, rec_undefined) %>%
+  select(prestage, rec_incomplete
+         # rec_incomplete, rec_ct_incomplete, rec_rt_incomplete, rec_not_in_time, rec_undefined
+         ) %>%
   tbl_summary(
     statistic = all_categorical() ~ "{n} ({p}%)", missing = "ifany",
     missing_text = "Not recorded",
     label = list(
       prestage ~ "Stage prior to recurrence",
-      rec_incomplete ~ "Treatment incomplete",
-      rec_ct_incomplete ~ "  Chemotherapy not completed",
-      rec_rt_incomplete ~ "  Radiotherapy not completed",
-      rec_not_in_time ~ "Treatment completed but not within time",
-      rec_undefined ~ "Uncoded reason (codes 3/4)")) %>%
+      rec_incomplete ~ "Cause of Recurrence"
+      # rec_incomplete ~ "Treatment incomplete",
+      # rec_ct_incomplete ~ "  Chemotherapy not completed",
+      # rec_rt_incomplete ~ "  Radiotherapy not completed",
+      # rec_not_in_time ~ "Treatment completed but not within time",
+      # rec_undefined ~ "Unknown"
+      )) %>%
   bold_labels()
 
 # ----------------------------------------------------------

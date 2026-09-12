@@ -1,10 +1,172 @@
-# Early Childhood Food Insecurity (EC-FIES) — Bangladesh
+# Infant and young child feeding practice — Bangladesh
 ## Project brainstorm & analysis plan
 
 **Student:** Md. Samsul Arefen Anni (MS 2023-24, INFS, University of Dhaka)
 **Supervisor:** Dr. Md. Ruhul Amin
 **Data:** `Data/MAIN.sav` — 407 mother–child pairs, 323 variables, KoBo/ODK export
-**Prepared:** 2026-09-05 · **Revised:** 2026-09-09
+**Prepared:** 2026-09-05 · **Revised:** 2026-09-11
+
+---
+
+## Revision note — what changed on 2026-09-11
+
+**EC-FIES is out of the thesis, and the outcome is now a constructed IYCF practice
+score.** This supersedes the 2026-09-10 note below, which had made an IYCF indicator the
+outcome but kept EC-FIES as the exposure. EC-FIES is now dropped altogether.
+
+**Nothing is lost analytically.** EC-FIES tested null against every diet measure, in every
+specification, adjusted and unadjusted (§4.4, §4.7, §4.8). Removing it removes a null
+exposure, not a finding. The eight items remain in `MAIN.sav` if it is ever wanted back.
+
+### The new outcome
+
+`02_iycf.R` §10 builds an **IYCF practice score, 0–10**, from five graded components, and
+cuts it into four ordered severity categories. Components, and the reason each is graded
+rather than binary, are in Table 4.12.
+
+| Component | Range | Graded on |
+|---|---|---|
+| Dietary diversity | 0–3 | the 0–8 food-group score, WHO's cut-off of 5 sitting between grades 1 and 2 |
+| Meal frequency | 0–2 | below / exactly at / above **each child's own** WHO minimum |
+| Animal-source foods | 0–2 | 0, 1, or ≥2 of the nine animal-source rows |
+| Fruit and vegetables | 0–2 | 0 (= ZVF), 1, or ≥2 of the five rows |
+| Breastfeeding | 0–1 | breastfed yesterday |
+
+| Category | Score | n | % |
+|---|---|---|---|
+| Severe inadequacy | 0–3 | 111 | 27.3 |
+| Moderate inadequacy | 4–5 | 116 | 28.5 |
+| Mild inadequacy | 6–7 | 106 | 26.0 |
+| Adequate | 8–10 | 74 | 18.2 |
+
+Mean 5.08, SD 2.40, median 5. Cronbach's α = **0.682**.
+
+### Four decisions that a viva will ask about
+
+**1. Summing the ten WHO binary indicators does not work, and was rejected.** It was tried
+first. α = 0.33, and three items correlate *negatively* with the rest. It also dichotomises
+seven times over, which §3.7 forbids for exactly this reason. Grading the components on
+their underlying scales raises α to 0.682 and keeps every WHO indicator recoverable from
+its component, so no reporting is lost.
+
+**2. The structure is the Infant and Child Feeding Index, rebuilt on WHO 2021.** Ruel &
+Menon (2002) and Arimond & Ruel (2004) are the citable precedent for an additive,
+age-sensitive IYCF composite in this age band. The components are theirs; the definitions
+are WHO & UNICEF (2021), because that is the instrument this study actually administered.
+
+**3. Breastfeeding is kept, and it is the weak component.** Its corrected item-total
+correlation is **−0.135**, and it stays negative inside all four age groups, so this is a
+real trade-off in the data and not an age artefact: breastfed children here eat a less
+varied complementary diet. Dropping it raises α from 0.682 to 0.752. It is kept because a
+feeding score for 6–23 month olds that ignores breastfeeding is not an IYCF score. The
+four-component version ships as `iycf_nobf` in the analysis file, so the sensitivity
+analysis is one line. **Report both α values in the methods chapter.**
+
+**4. Sweet beverages and unhealthy foods are reported but not scored.** They are WHO 2021
+indicators and Table 4.10 keeps them. They are *not* reverse-scored into the adequacy
+score, because in these data they correlate **positively** with it — sweet beverages rise
+13.5% → 15.5% → 17.9% → 25.7% across the four categories, unhealthy foods 29.7% → 49.1% →
+53.8% → 51.4%. A child given biscuits and sweet drinks is typically a child being given
+more of everything. Subtracting for them would penalise the better-fed children. This is a
+finding in its own right and belongs in the discussion. Zero-vegetable-or-fruit is the one
+avoidance indicator inside the score, as the bottom grade of the fruit-and-vegetable
+component.
+
+### Cut-points are fixed, not quantiles
+
+0–3 / 4–5 / 6–7 / 8–10, set on the scoring logic: 8 or more means the child meets or beats
+the WHO minimum on essentially every component. They land close to the sample quartiles,
+so the groups come out near-equal, but they are not *defined* as quartiles. A quantile
+cut-point would move with the sample and could not be compared against another study;
+this one can.
+
+**Table 4.13 validates them.** Across severe → adequate, minimum dietary diversity runs
+0.0%, 2.6%, 73.6%, 100.0% and minimum acceptable diet runs 0.0%, 0.0%, 48.1%, 90.5%, with
+zero-vegetable-or-fruit falling 88.3% → 0.0%. That monotone gradient is what a severity
+scale has to produce, and it is the check that would break first if a component were
+scored backwards.
+
+### What this does to the rest of the plan
+
+- **§3.2** — the direction question is settled. There is one objective, not two. Direction
+  A is gone with EC-FIES.
+- **§3.7** — unchanged in principle and now applied more thoroughly: the score is built
+  from underlying scales throughout.
+- **§3.8** — the multiplicity problem largely dissolves. One pre-specified composite
+  outcome replaces ten candidate indicators. The ten WHO indicators become a descriptive
+  panel (Table 4.10) and stop being candidate outcomes.
+- **§4.4, §4.7** — the EC-FIES association and the flipped models are superseded. Keep
+  them out of Chapter 4.
+- **§4.8** — re-run on the new outcome, and **child illness at interview has been added
+  as a 34th candidate**, which it should have been all along: the score is built entirely
+  on the 24-hour recall and illness is the strongest known confounder of that recall.
+  **Twelve** candidate variables now reach p < 0.05 on the score, up from eight on the
+  food-group score: household dietary diversity, father's education, division, child
+  illness, any media access, wealth quintile, child age group, household bank account,
+  birth weight, antenatal care visits, mother's education and separate kitchen. Sick
+  children are 37.8% severe against 19.7% of well children. **Read that as sampling, not
+  as a finding** — recruitment happened at health congregation sites, so sick children are
+  over-sampled by design. Still unadjusted, still uncorrected for multiplicity and
+  clustering.
+- **§5, table plan** — Tables 4.12 and 4.13 are new (score construction, category
+  validation), 4.14 is the old pass-through table with the EC-FIES split removed, and
+  Figure 4.6 is now the score distribution with its cut-points rather than the
+  household-diet-versus-EC-FIES figure.
+
+### Added 2026-09-12 — the supervisor's own paper defines a competing index
+
+`Materials/Infant and young child feeding in rural Bangladesh ... .pdf` is Sheikh Z,
+Hossain MS, Ali M, Hassan R, Alam MM, **Amin MR** (2026), *J Nutr Sci* 15: e50. The
+corresponding author is this thesis's supervisor, so its method is not one option among
+many — it is the method the thesis will be read against.
+
+**Its index, from "Assessment of IYCF knowledge and practices":** one point per correct
+practice across the WHO/UNICEF indicators, cumulative score converted to a percentage,
+cut at **>80% = appropriate practice**. Negative indicators count as correct when the
+child did *not* do them. Knowledge uses the same machinery with three levels, poor 0–50%,
+fair 51–80%, good >80%.
+
+`02_iycf.R` §10b now builds it, and Table 4.15 sets it beside the graded score. Both ship
+in the analysis file, so either can be primary.
+
+**The one idea worth taking wholesale** is the per-child denominator. Scoring each child
+only on the indicators that *apply* to them is the clean fix for continued breastfeeding,
+introduction of solid foods and milk feeding frequency having restricted denominators —
+the problem that kept those three out of the §10 score. Here it gives 7, 8 or 9 applicable
+indicators per child.
+
+**Three defects to raise before adopting it as primary.**
+
+1. **MAD double-counts.** It is MDD ∧ MMF ∧ milk-feed, all separately in the same
+   indicator list, so it inflates alpha by scoring one behaviour twice. Alpha falls from
+   **0.569 to 0.372** when MAD is removed. The paper reports no alpha at all. The graded
+   score has no such composite and reaches 0.682.
+2. **The paper's own numbers do not reconcile on a fixed denominator.** It states the
+   score is "out of 15" with a mean of 6.3 ± 2.2, then classifies 30.3% as scoring >80%.
+   Eighty percent of 15 is >12, which is 2.6 SD above that mean. The three figures are
+   consistent only if the denominator is per-child applicable indicators, which is how
+   §10b implements it. **Ask the supervisor directly** — it changes the headline
+   prevalence. On this cohort the >80% cut gives 22.9%.
+3. **Reverse-scoring does not rescue the negative items.** Sweet beverages and unhealthy
+   foods still carry negative corrected item-total correlations under the published
+   method. It does not make the problem go away, it just does not test for it.
+
+The two indices rank children similarly, Spearman 0.859, but agree on only 57.7% of
+four-level category assignments, so the choice is not cosmetic.
+
+### Still open
+
+- **`05_models.R` has not been written.** The primary model is **ordinal logistic
+  (proportional odds) on `iycf_cat`**, with linear regression on `iycf_score` as the
+  continuous form. Test the proportional-odds assumption and report the test; if it fails,
+  a partial-proportional-odds or continuation-ratio model is the fallback. Cluster-robust
+  standard errors on the 25 upazila sites, per §3.5.
+- **Table 4.5 in `01_tables_chapter4.R` is still an EC-FIES table** and has not been
+  touched. It is a legitimate description of the sample even if EC-FIES is no longer the
+  study's subject. Decide whether it stays in Chapter 4 — that is a supervisor call, not a
+  scripting one.
+- **The thesis title and synopsis still say food insecurity.** They now describe neither
+  the outcome nor the exposure. This needs raising before Chapter 4 is written.
 
 ---
 

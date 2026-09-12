@@ -1,6 +1,6 @@
 ============================================================
 Project 7 / V3 - cleaning & recheck log (script_farhana_v4.R)
-Run: 2026-09-05 02:17
+Run: 2026-09-13 00:50
 ============================================================
 Rows read from Data/cancer_data_imputed.Farhana.xlsx: 135
 Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
@@ -22,24 +22,41 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
 --- 2. METASTATIC BURDEN: site list vs recorded `mburden` ---
   derived from site list x recorded in xlsx:
              recorded
-  derived     >3 sites 1 site 2-3 sites
-    1 site           0     82         0
-    2-3 sites        1      0        47
-    >3 sites         5      0         0
+  derived     >3 sites 1 site
+    1 site           0     82
+    2-3 sites        1      0
+    >3 sites         5      0
+             recorded
+  derived     2-3 sites
+    1 site            0
+    2-3 sites        47
+    >3 sites          0
   rows where the recorded burden contradicts the patient's own site list:
-    row sitemetastasis n_sites recorded   derived
-  1   3        2,3,4,7       3  >3 site 2-3 sites
+    row sitemetastasis n_sites
+  1   3        2,3,4,7       3
+    recorded   derived
+  1  >3 site 2-3 sites
   rows where the xlsx burden differs from the SPSS source: 9
-    row       sav     xlsx n_sites
-  1   3 2-3 sites >3 sites       3
-  2  16 2-3 sites >3 sites       4
-  3  42 2-3 sites   1 site       1
-  4  75 2-3 sites >3 sites       4
-  5  99      <NA>   1 site       1
-  6 100      <NA>   1 site       1
-  7 124      <NA>   1 site       1
-  8 125 2-3 sites >3 sites       4
-  9 132 2-3 sites >3 sites       4
+    row       sav     xlsx
+  1   3 2-3 sites >3 sites
+  2  16 2-3 sites >3 sites
+  3  42 2-3 sites   1 site
+  4  75 2-3 sites >3 sites
+  5  99      <NA>   1 site
+  6 100      <NA>   1 site
+  7 124      <NA>   1 site
+  8 125 2-3 sites >3 sites
+  9 132 2-3 sites >3 sites
+    n_sites
+  1       3
+  2       4
+  3       1
+  4       4
+  5       1
+  6       1
+  7       1
+  8       4
+  9       4
   (the site list, not the burden field, is used below - it is the more
    granular record and reproduces the xlsx in all but the rows above)
 
@@ -54,19 +71,19 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
 --- 4. CAUSES OF RECURRENT METASTASIS: codes found vs questionnaire ---
   raw strings:
   
-     1  1,2  1,a  1,b   1a  1ab   1b    2    3    4 <NA> 
-    12   10    3    1    1    6   11   32   10    6   43 
+     1    2    3 <NA> 
+    52   39    1   43 
   codes after parsing '1a'/'1ab'/'1b' into 1 + a/b:
   
-   1  2  3  4  a  b 
-  44 42 10  6 10 18 
+   1  2  3 
+  52 39  1 
   questionnaire defines only 1 (with sub-codes a, b) and 2.
-  codes 3 (n = 10) and 4 (n = 6) are NOT defined anywhere - client needs to supply their meaning.
+  codes 3 (n = 1) and 4 (n = 0) are NOT defined anywhere - client needs to supply their meaning.
   the three flags carried in the xlsx do not follow the questionnaire:
-    CT_not_completed = 44  (matched any '1' -> really 'treatment incomplete' = 44)
-    RT_not_completed = 32  (matched code 2 -> really 'not within time' = 42)
-    Tx_not_in_time   = 10  (matched undefined code 3 = 10)
-  correct counts: incomplete = 44, of which CT not completed = 10 and RT not completed = 18; not within time = 42
+    CT_not_completed = 44  (matched any '1' -> really 'treatment incomplete' = 52)
+    RT_not_completed = 32  (matched code 2 -> really 'not within time' = 39)
+    Tx_not_in_time   = 10  (matched undefined code 3 = 1)
+  correct counts: incomplete = 52, of which CT not completed = 0 and RT not completed = 0; not within time = 39
 
 --- 5. TREATMENT RECEIVED: codes in `rxreceived` vs questionnaire ---
   
@@ -100,11 +117,29 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
 
 --- 7. SUBTYPE: xlsx `clinical_subtype` vs subtype derived from ER/PR/HER2 ---
              derived
-  xlsx        HR+/HER2+ HR+/HER2- HR-/HER2+ HR-/HER2-
-    HR-/HER2-         2         1         2         9
-    HR-/HER2+        10         9        15         5
-    HR+/HER2-         6        33         1         4
-    HR+/HER2+        25         7         0         6
+  xlsx        HR+/HER2+
+    HR-/HER2-         2
+    HR-/HER2+        10
+    HR+/HER2-         6
+    HR+/HER2+        25
+             derived
+  xlsx        HR+/HER2-
+    HR-/HER2-         1
+    HR-/HER2+         9
+    HR+/HER2-        33
+    HR+/HER2+         7
+             derived
+  xlsx        HR-/HER2+
+    HR-/HER2-         2
+    HR-/HER2+        15
+    HR+/HER2-         1
+    HR+/HER2+         0
+             derived
+  xlsx        HR-/HER2-
+    HR-/HER2-         9
+    HR-/HER2+         5
+    HR+/HER2-         4
+    HR+/HER2+         6
   rows disagreeing: 53 of 135
   of those, 52 sit in rows where the receptors were imputed and 1 in rows where they were observed (row 4 - the same row whose ER value differs from the SPSS source, see section 3)
 
@@ -126,13 +161,17 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
   de novo patients carrying a CAUSE OF RECURRENCE (impossible by definition): 20
     rows: 82, 85, 95, 97, 103, 111, 116, 117, 118, 119, 121, 122, 123, 124, 125, 126, 129, 130, 131, 135
     these causes are ignored below - Table 2b is restricted to recurrent MBC.
-  prior stage recorded for 61 of 72 recurrent patients
+  prior stage recorded for 72 of 72 recurrent patients
 
 --- 9. FOLLOW-UP (client query 8: can loss to follow-up be incorporated?) ---
   `cs` categories available:
   
-  Alive with disease       Disease free              Death 
-                  79                 17                 39 
+  Alive with disease 
+                  79 
+        Disease free 
+                  17 
+               Death 
+                  39 
   There is NO lost-to-follow-up category and no last-contact date, so LTFU
   cannot be derived. The only follow-up variable is `followup`:
   followup_reg
