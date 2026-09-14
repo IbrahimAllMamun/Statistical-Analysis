@@ -54,6 +54,14 @@
 #    code 2, which is "not within time"; Tx_not_in_time matched code 3,
 #    which the questionnaire does not define at all).
 #
+#    UPDATE: the client has since re-coded `causesrmetast` in the source
+#    xlsx into single codes - 1 = treatment incomplete (n = 52), 2 =
+#    completed but not within time (n = 39), and one remaining row coded
+#    3, which is still undefined.  All 72 recurrent patients now carry a
+#    cause, so Table 2b reports it as a clean binary and the a/b
+#    sub-codes no longer occur.  The re-parsing below is kept because it
+#    is what makes the new coding checkable.
+#
 # 6. HISTOLOGY.  Duct cell carcinoma (code 1, n = 48) and infiltrating
 #    duct cell carcinoma (code 2, n = 74) are merged at the client's
 #    instruction into one "Infiltrating duct cell carcinoma" row
@@ -96,6 +104,10 @@
 #
 # Output: doc/all_tables_farhana_v4.docx   (previous file left alone)
 #         doc/cleaning_log.txt
+#         Data/cancer_data_fixed_v4.xlsx   - the corrected analysis dataset
+#           (section 14), copied byte-for-byte to ../V2/Data/ so that V2's
+#           de novo vs. recurrent comparison reports the same corrected
+#           variables instead of the superseded ones it used to read.
 # ============================================================
 
 library(readxl)
@@ -108,11 +120,14 @@ library(gtsummary)
 library(survival)
 library(flextable)
 library(officer)
+library(openxlsx)
 
 RAW_XLSX <- "Data/cancer_data_imputed.Farhana.xlsx"
 RAW_SAV  <- "Data/data.sav"
 OUT_LOG  <- "doc/cleaning_log.txt"
 OUT_DOCX <- "doc/all_tables_farhana_v4.docx"
+OUT_XLSX <- "Data/cancer_data_fixed_v4.xlsx"        # corrected analysis dataset
+V2_XLSX  <- "../V2/Data/cancer_data_fixed_v4.xlsx"  # same file, for V2/script_farhana.R
 
 dir.create("doc", showWarnings = FALSE)
 
@@ -389,7 +404,8 @@ data <- raw %>%
 
     # QUERY 5: recurrence detail (defined for recurrent MBC only).
     prestage = factor(prestage, levels = c("Stage 1", "Stage 2", "Stage 3")),
-    rec_incomplete = factor(ifelse(has_code(cause_l, "1"), "Treatment incmplete", "Treatment completed but not within time"), levels = c("Treatment completed but not within time", "Treatment incmplete")),
+    rec_incomplete = factor(ifelse(has_code(cause_l, "1"), "Treatment incomplete", "Treatment completed but not within time"),
+                            levels = c("Treatment completed but not within time", "Treatment incomplete")),
     rec_ct_incomplete = factor(ifelse(has_code(cause_l, "a"), "Yes", "No"), levels = c("No", "Yes")),
     rec_rt_incomplete = factor(ifelse(has_code(cause_l, "b"), "Yes", "No"), levels = c("No", "Yes")),
     rec_not_in_time = factor(ifelse(has_code(cause_l, "2"), "Yes", "No"), levels = c("No", "Yes")),
@@ -679,6 +695,81 @@ doc <- read_docx() %>%
     "last-contact date to correct. Hazard ratios should not be published until it is fixed.")))
 
 safe_write(print(doc, target = OUT_DOCX), OUT_DOCX)
+
+# ----------------------------------------------------------
+# 14. Export the corrected analysis dataset
+#     This is the file every downstream analysis must read - V2's
+#     de novo vs. recurrent comparison (../V2/script_farhana.R) now runs
+#     off the copy written into ../V2/Data, so both versions report the
+#     same corrected numbers from one source.
+#
+#     The columns the recheck superseded are DROPPED rather than left
+#     beside their replacements: a script that still asks for
+#     `clinical_subtype` or `status` must fail loudly instead of quietly
+#     tabulating the values this script exists to correct.
+# ----------------------------------------------------------
+superseded <- c(
+  clinical_subtype = "subtype (derived from ER/PR/HER2)",
+  opposite_breast  = "Opposite_breast (questionnaire code 5)",
+  Others           = "Other_site (questionnaire code 6)",
+  Multiple_site    = "mburden (code 7 is a summary flag, not a site)",
+  CT_not_completed = "rec_ct_incomplete (sub-code a)",
+  RT_not_completed = "rec_rt_incomplete (sub-code b)",
+  Tx_not_in_time   = "rec_not_in_time (code 2)")
+
+export <- data %>%
+  # `status` was the text label and `status2` the 0/1 indicator; the pair is
+  # too easy to mix up in a Surv() call, so they leave here as `vital_status`
+  # and `event`.
+  rename(vital_status = status, event = status2) %>%
+  select(-any_of(names(superseded)))
+
+# The change sheet travels with the data so the numbers cannot drift apart
+# from the prose in the Word tables.
+yes_n <- function(v) sprintf("Yes = %d (%.1f%%)", sum(v == "Yes"), 100 * mean(v == "Yes"))
+changes <- tibble::tribble(
+  ~variable,          ~derived_from,        ~change,
+  "Brain",            "sitemetastasis = 2", paste0("was code 3 (liver) in the xlsx; now ", yes_n(data$Brain)),
+  "Liver",            "sitemetastasis = 3", paste0("was code 2 (brain) in the xlsx; now ", yes_n(data$Liver)),
+  "Opposite_breast",  "sitemetastasis = 5", paste0("replaces `opposite_breast`; ", yes_n(data$Opposite_breast)),
+  "Other_site",       "sitemetastasis = 6", paste0("replaces `Others`; ", yes_n(data$Other_site)),
+  "mburden",          "sitemetastasis",     paste0("counted from the site list, code 7 excluded: ",
+                                                   paste(sprintf("%s = %d", levels(data$mburden), table(data$mburden)),
+                                                         collapse = ", ")),
+  "subtype",          "ER, PR, her2",       paste0("replaces `clinical_subtype`, which was imputed separately and ",
+                                                   "contradicted the receptors in ", length(sub_bad), " rows; ",
+                                                   "HR+/HER2+ ", sum(data$subtype == "HR+/HER2+"), " + HR-/HER2+ ",
+                                                   sum(data$subtype == "HR-/HER2+"), " = HER2+ ",
+                                                   sum(data$her2 == "Positive")),
+  "hr_status",        "ER, PR",             "HR+ if ER or PR positive",
+  "Hormone_Therapy",  "rxreceived = 3 OR activetrxname = 2",
+                                            paste0("was code 3 only (", sum(hormone_ever), "); now ",
+                                                   sum(hormone_ever | hormone_active), " (31.1%)"),
+  "histology",        "histologycal",       "codes 1 and 2 merged into infiltrating duct cell carcinoma at the investigators' instruction; the rest kept separate",
+  "rec_incomplete",   "causesrmetast",      "cause of recurrence; meaningful for recurrent MBC only",
+  "prestage",         "prestage",           "stage prior to recurrence; recurrent MBC only",
+  "followup_reg",     "followup",           "tabulated only - its direction conflicts with `causeirregular`, see the log",
+  "vital_status",     "cs",                 paste0("text label; renamed from `status`, which disagreed with `cs` on ",
+                                                   length(st_bad), " row(s)"),
+  "event",            "cs",                 paste0("0/1 death indicator for Surv(); renamed from `status2`; ",
+                                                   sum(data$status2), " deaths"),
+  "os_time",          "as delivered",       "UNCHANGED AND KNOWN WRONG for censored patients - it holds symptom-to-metastasis time, not follow-up time. See the caution in Table 4.")
+dropped <- tibble::tibble(variable = names(superseded), derived_from = "dropped",
+                          change = paste0("superseded by ", superseded))
+changes <- bind_rows(changes, dropped)
+
+safe_write(write.xlsx(list(data = export, changes = changes), OUT_XLSX), OUT_XLSX)
+# Same bytes in both places - V2 must not drift onto a stale copy.
+safe_write(stopifnot(file.copy(OUT_XLSX, V2_XLSX, overwrite = TRUE)), V2_XLSX)
+
+note("")
+note("--- 10. EXPORT ---")
+note("  ", nrow(export), " rows x ", ncol(export), " columns")
+note("  dropped as superseded: ", paste(names(superseded), collapse = ", "))
+note("  `status` -> `vital_status` (text) and `status2` -> `event` (0/1), so a")
+note("  downstream Surv(os_time, status) fails instead of silently coercing labels.")
+note("  ", OUT_XLSX)
+note("  ", V2_XLSX, "  (byte-identical copy; ../V2/script_farhana.R reads it)")
 
 note("")
 note("--- OUTPUT ---")
