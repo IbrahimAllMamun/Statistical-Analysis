@@ -85,6 +85,7 @@ if (!"subtype" %in% names(raw))
 
 yn <- function(x) factor(str_to_title(as.character(x)), levels = c("No", "Yes"))
 
+
 data <- raw %>%
   mutate(
     # ── grouping & subtype (derived from the receptors in V3) ──
@@ -143,6 +144,7 @@ data <- raw %>%
     # at 24 months and, for censored patients, is still the symptom-to-
     # metastasis interval - see the caution footnoted under Table 4.
     event   = as.numeric(event),
+    event2   = factor(event, labels = c("Alive", "Death")),
     os_time = as.numeric(os_time)
   )
 
@@ -152,7 +154,7 @@ data <- raw %>%
 tab1 <- data %>%
   filter(!is.na(mbc_type)) %>%
   select(mbc_type, age_grp, Residence, Education, Income, Smoking,
-         ER, PR, her2, subtype, grading, surgery) %>%
+         ER, PR, her2, subtype, grading, surgery, cs) %>%
   tbl_summary(
     by = mbc_type,
     label = list(
@@ -166,7 +168,8 @@ tab1 <- data %>%
       her2             ~ "HER2 status",
       subtype          ~ "Clinical subtype",
       grading          ~ "Tumour grade",
-      surgery          ~ "Surgery"
+      surgery          ~ "Surgery",
+      cs               ~ "Status"
     ),
     statistic = list(all_categorical() ~ "{n} ({p}%)"),
     missing   = "no"
@@ -436,6 +439,8 @@ doc <- read_docx() %>%
 safe_write(print(doc, target = file.path("doc", "all_table_farhana.docx")),
            "doc/all_table_farhana.docx")
 
+
+
 # ============================================================
 # KM PLOTS - overall survival by MBC type (± by subtype)
 # ============================================================
@@ -490,5 +495,41 @@ if (length(km_panels) > 0) {
     print(combined_panels)
   }, "Graph/Fig5_KM_by_Subtype_farhana.pdf")
 }
+
+status_graph <- data %>%
+  mutate(
+    cs = factor(
+      cs,
+      levels = c(
+        "Disease free",
+        "Alive with disease",
+        "Death"
+      )
+    )
+  ) %>% 
+  ggplot(aes(x = cs, fill = mbc_type)) +
+  geom_bar(
+    position = "dodge",
+    colour = "black"
+  ) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 4
+  ) +
+  scale_fill_manual(
+    values = c("#2166AC", "#1baf7a")
+  ) +
+  labs(
+    x = "Status",
+    y = "Frequency",
+    fill = "MBC Type"
+  ) +
+  theme_minimal()
+
+
+ggsave("Graph/Fig4_status.pdf", plot = status_graph, height = 6,width = 8,dpi = 300)
 
 message("\n=== All outputs rebuilt from Data/cancer_data_fixed_v4.xlsx ===")
