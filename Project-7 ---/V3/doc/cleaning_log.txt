@@ -1,6 +1,6 @@
 ============================================================
 Project 7 / V3 - cleaning & recheck log (script_farhana_v4.R)
-Run: 2026-09-15 04:37
+Run: 2026-09-19 11:09
 ============================================================
 Rows read from Data/cancer_data_imputed.Farhana.xlsx: 135
 Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
@@ -100,11 +100,17 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
 
 --- 7. SUBTYPE: xlsx `clinical_subtype` vs subtype derived from ER/PR/HER2 ---
              derived
-  xlsx        HR+/HER2+ HR+/HER2- HR-/HER2+ HR-/HER2-
-    HR-/HER2-         2         1         2         9
-    HR-/HER2+        10         9        15         5
-    HR+/HER2-         6        33         1         4
-    HR+/HER2+        25         7         0         6
+  xlsx        HR+/HER2+ HR+/HER2- HR-/HER2+
+    HR-/HER2-         2         1         2
+    HR-/HER2+        10         9        15
+    HR+/HER2-         6        33         1
+    HR+/HER2+        25         7         0
+             derived
+  xlsx        HR-/HER2-
+    HR-/HER2-         9
+    HR-/HER2+         5
+    HR+/HER2-         4
+    HR+/HER2+         6
   rows disagreeing: 53 of 135
   of those, 52 sit in rows where the receptors were imputed and 1 in rows where they were observed (row 4 - the same row whose ER value differs from the SPSS source, see section 3)
 
@@ -131,8 +137,10 @@ Rows read from Data/data.sav: 135  (row-aligned by `mobile`: TRUE)
 --- 9. FOLLOW-UP (client query 8: can loss to follow-up be incorporated?) ---
   `cs` categories available:
   
-  Alive with disease       Disease free              Death 
-                  79                 17                 39 
+  Alive with disease       Disease free 
+                  79                 17 
+               Death 
+                  39 
   There is NO lost-to-follow-up category and no last-contact date, so LTFU
   cannot be derived. The only follow-up variable is `followup`:
   followup_reg

@@ -69,9 +69,9 @@ Sex missing          : 0
   nlpr_day1   survivors 5.71 - 17.62     deaths 3.75 - 25.00     
   nlpr_day3   survivors 2.10 - 14.65     deaths 2.91 - 22.40     
   nlpr_day5   survivors 4.75 - 9.67      deaths 6.62 - 18.42     
-  news_day1   survivors 4.00 - 12.00     deaths 6.00 - 11.00     
-  news_day3   survivors 4.00 - 11.00     deaths 5.00 - 12.00     
-  news_day5   survivors 0.00 - 9.00      deaths 5.00 - 16.00     
+  news_day1   survivors 1.00 - 9.00      deaths 3.00 - 8.00      
+  news_day3   survivors 3.00 - 10.00     deaths 4.00 - 11.00     
+  news_day5   survivors 2.00 - 11.00     deaths 7.00 - 18.00     
   total_sofa  survivors 2.00 - 7.00      deaths 4.00 - 12.00     
   age_years   survivors 14.00 - 90.00    deaths 22.00 - 75.00    
   Firth penalized likelihood is therefore used for Tables 2 and 3, and
@@ -79,12 +79,12 @@ Sex missing          : 0
 
 --- Table 2: NEWS(d5) model (Firth) ---
                Factor Odds ratio         95% CI
-            NEWS (d5)      3.404   1.838-47.614
-    Sex (male gender)      0.253    0.013-3.682
- Age 40-59 y (vs <40)      0.623   0.046-11.850
- Age 60-74 y (vs <40)      1.107 <0.001-470.095
-   Age 75+ y (vs <40)     39.869   <0.001->1000
-                 SOFA      5.072   1.809-52.768
+            NEWS (d5)      3.404   1.838-32.040
+    Sex (male gender)      0.253    0.003-3.682
+ Age 40-59 y (vs <40)      0.623   0.046-10.666
+ Age 60-74 y (vs <40)      1.107 <0.001-449.218
+   Age 75+ y (vs <40)     39.870   <0.001->1000
+                 SOFA      5.072   1.809-85.712
       P
  <0.001
   0.325
@@ -109,9 +109,9 @@ Sex missing          : 0
   0.002
 --- Table 4: ROC ---
               Parameter Cut-off value
-              NEWS (d1)         8.500
-              NEWS (d3)         8.500
-              NEWS (d5)         8.500
+              NEWS (d1)         5.500
+              NEWS (d3)         7.500
+              NEWS (d5)        10.500
               NLPR (d1)        14.228
               NLPR (d3)         8.487
               NLPR (d5)         7.545

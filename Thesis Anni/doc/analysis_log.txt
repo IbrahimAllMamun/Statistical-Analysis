@@ -1,0 +1,50 @@
+
+------------------------------------------------------------------
+03_analysis.R
+------------------------------------------------------------------
+Run: 2026-09-12 21:02
+Source: Data/iycf_analysis.rds
+Rows: 407 | columns: 79
+
+------------------------------------------------------------------
+OUTCOME
+------------------------------------------------------------------
+Score 0-9: mean 4.14  SD 2.42  median 4
+Cronbach's alpha, 4 components : 0.752   <- used
+Cronbach's alpha, 5 components : 0.682   (02_iycf.R default)
+   Severe inadequacy      111 (27.3%)
+   Moderate inadequacy    113 (27.8%)
+   Mild inadequacy        103 (25.3%)
+   Adequate                80 (19.7%)
+Binary, score >= 7: 80 events / 327 non-events (19.7%)
+Independent variables: 34 in 5 groups
+
+------------------------------------------------------------------
+VARIABLE SELECTION
+------------------------------------------------------------------
+Step 1, bivariate p <= 0.25: 17 of 34 pass
+Step 2, complete cases across the 17 screened variables: 397 of 407
+Step 3, VIF >= 2 removed: Clean cooking fuel
+Final model variables: 16
+
+------------------------------------------------------------------
+FINAL MODEL
+------------------------------------------------------------------
+Fitted on 397 complete cases, 79 events.
+Model degrees of freedom: 38  ->  2.08 events per df
+Max |coefficient| 2.09  max SE 1.97
+No separation. Ordinary maximum-likelihood logistic regression used.
+
+------------------------------------------------------------------
+PARSIMONIOUS MODEL
+------------------------------------------------------------------
+Retained: Child age group, Father's education, Household size, Wealth quintile, Separate kitchen, Household food groups (0-5)
+Degrees of freedom 38 -> 15;  events per df 2.08 -> 5.27
+
+------------------------------------------------------------------
+DONE
+------------------------------------------------------------------
+Outcome -> 0-9 score (alpha 0.752), 4 categories, binary at >= 7.
+Tables  -> doc/Tables_Analysis.docx  (1-16)
+Selected  -> Child age group, Birth order, Birth weight, Currently breastfed, Child sick at interview, Mother's education, Father's education, Household size, Wealth quintile, Division, ANC visits, Any media access, Improved sanitation, Separate kitchen, Household bank account, Household food groups (0-5)
+Parsimonious -> Child age group, Father's education, Household size, Wealth quintile, Separate kitchen, Household food groups (0-5)

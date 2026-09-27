@@ -1,0 +1,160 @@
+
+------------------------------------------------------------------
+02_iycf.R
+------------------------------------------------------------------
+Run: 2026-09-12 13:52
+Source: Data/MAIN.sav
+Rows read: 407 | columns: 323
+Age recovered from approx_age for 18 children.
+Outside the 6-23 month window: 2 (ages 5, 24 months)
+Breastfed yesterday: 380/407 (93.4%)
+
+------------------------------------------------------------------
+IYCF PRACTICE SCORE - the outcome
+------------------------------------------------------------------
+Range 0-10   mean 5.08   SD 2.40   median 5
+Cronbach's alpha, all 5 components : 0.682
+Cronbach's alpha, breastfeeding out: 0.752
+Corrected item-total correlations:
+   Dietary diversity      +0.797
+   Meal frequency         +0.278
+   Animal-source foods    +0.561
+   Fruit and vegetables   +0.570
+   Breastfeeding          -0.135   <- NEGATIVE, see decision 11
+Category distribution:
+   Severe inadequacy      111  (27.3%)
+   Moderate inadequacy    116  (28.5%)
+   Mild inadequacy        106  (26.0%)
+   Adequate                74  (18.2%)
+Denominator sensitivity - the methodology document reports N = 405:
+   all 407 children : mean 5.079, SD 2.397, adequate 74 (18.2%)
+   6-23 mo (n=405): mean 5.079, SD 2.394, adequate 73 (18.0%)
+   The two excluded children are aged 5 and 24 months.
+Sweet beverages and unhealthy foods - both orientations (decision 12):
+   reversed, 1 = avoided (correct orientation) : alpha 0.538
+   as recorded, 1 = consumed                   : alpha 0.650
+   neither in the score, 5 components          : alpha 0.682
+   Reversing is the right orientation and is what lowers alpha. Leaving
+   them unreversed scores higher, but would reward feeding a child junk
+   food, so it is not an option. That gap is the diagnostic: these two
+   items measure discretionary-food exposure, not feeding adequacy.
+Correlation of each with the score, as recorded:
+   Sweet beverage (SwB)   r = +0.093
+   Unhealthy food (UFC)   r = +0.182
+
+------------------------------------------------------------------
+SHEIKH-STYLE INDEX (the supervisor's published method)
+------------------------------------------------------------------
+Applicable indicators per child: 7 -> 94 children;  8 -> 290 children;  9 -> 23 children
+Correct practices: mean 4.65  SD 1.83
+Percentage of applicable: mean 59.3%  SD 23.0  median 57.1
+Paper's cut, >80% = appropriate practice: 93 of 407 (22.9%)
+   The BIHS paper reports 30.3% appropriate on its own 0-23 month sample.
+Three-level scheme: Poor 192;  Fair 122;  Good 93
+Alpha on the 7 universally-applicable items : 0.569
+   same, with MAD removed                   : 0.372  <- defect (a)
+   MAD = MDD & MMF & (BF | MMFF), so it is an arithmetic function of its
+   own scale-mates. Its item-total correlation is the highest in the set
+   for that reason alone. Do not read 0.569 as evidence the scale coheres.
+Corrected item-total correlations:
+   MDD                  +0.655
+   MMF                  +0.290
+   MAD                  +0.686
+   EFF                  +0.371
+   No sweet beverage    -0.069   <- NEGATIVE, defect (c)
+   No unhealthy food    -0.178   <- NEGATIVE, defect (c)
+   Any fruit or veg     +0.439
+Agreement with the section 10 graded score: Spearman rho = 0.859
+   but only 57.7% of children land in the same one of four categories
+Binary forms for model building (decision 14):
+   score >=  8 ( 80% of max) :  74 yes / 333 no   limiting cell  74 -> ~ 7 predictor df   <- iycf_bin, PRIMARY
+   score >=  7 ( 70% of max) : 129 yes / 278 no   limiting cell 129 -> ~12 predictor df
+   score >=  6 ( 60% of max) : 180 yes / 227 no   limiting cell 180 -> ~18 predictor df   <- iycf_bin60, well-powered
+   score >=  5 ( 50% of max) : 231 yes / 176 no   limiting cell 176 -> ~17 predictor df
+   Sheikh's own >80% of applicable rule :  93 yes / 314 no  (agrees with
+   iycf_bin on 86.5% of children - the denominators differ per child)
+
+------------------------------------------------------------------
+DATA-QUALITY FLAGS (Module F)
+------------------------------------------------------------------
+(a) Meal count contradicts the food list:
+      says 0 meals but a food was reported : 7
+      says >=1 meal but no food reported   : 4
+      -> 11 records total. ISSSF uses the food list (WHO C.7).
+      Cause is almost certainly decision 4 in the header: F.A is asked
+      before the food list, where WHO asks it after.
+(c) F_A_1Num == 8, ambiguous with the 'Don't know' code: 1
+(d) Formula = Yes but count = 0: 1
+(e) Sweet-drink probe answered with no matching drink reported: 17
+      SwB as specified 17.4% vs gated 15.0% - see Table 4.10 footnote.
+(f) Sodas/malt/energy row: 0 of 407 reported Yes.
+      ZERO VARIANCE. Plausible for this age group, but the Bengali form
+      numbers two consecutive rows 'Fswt5'. Confirm the row was administered.
+(g) Food-group score of 1 (breast milk only): 21, of whom 13 recorded zero meals.
+      Includes children aged >= 12 months (max 23 mo) - implausible, verify against the paper forms.
+(h) 'Don't know' on food rows: 9 responses across 7 children. Scored as not consumed, per WHO.
+
+------------------------------------------------------------------
+SELF-CHECK against the analysis plan
+------------------------------------------------------------------
+  MDD                    computed   155   expected   155   ok
+  MMF                    computed   261   expected   261   ok
+  MAD                    computed   118   expected   118   ok
+  EFF                    computed   266   expected   266   ok
+  SwB                    computed    71   expected    71   ok
+  UFC                    computed   185   expected   185   ok
+  ZVF                    computed   170   expected   170   ok
+  CBF (12-23 mo)         computed   206   expected   206   ok
+  ISSSF (6-8 mo)         computed    76   expected    76   ok
+  MMFF (non-BF)          computed    16   expected    16   ok
+  Breastfed              computed   380   expected   380   ok
+  Food-group score sum   computed  1639   expected  1639   ok
+  Household groups sum   computed  1305   expected  1305   ok
+  All 13 checks passed.
+
+Score construction invariants (not an independent replication):
+  score = sum of parts   TRUE    ok
+  score in range         TRUE    ok
+  no missing score       TRUE    ok
+  no missing category    TRUE    ok
+  categories sum to N    TRUE    ok
+  all 4 categories used  TRUE    ok
+  MDD rises              TRUE    ok
+  MAD rises              TRUE    ok
+  EFF rises              TRUE    ok
+  ZVF falls              TRUE    ok
+  top cat is best        TRUE    ok
+  separation quality     0 child(ren) reaching MDD sit in the bottom category
+                         0 child(ren) reaching MAD sit in the bottom category
+
+------------------------------------------------------------------
+SEPARATION SCREEN for the binary outcomes
+------------------------------------------------------------------
+Outcome: iycf_bin, score >= 8  (74 events / 333 non-events)
+   Place of delivery            empty outcome cell at: Other  (n = 2)
+   -> fit these with logistf (Firth), or collapse the sparse level first.
+   -> glm will NOT warn you: it reports converged = TRUE and returns a
+      coefficient near 13 (odds ratio ~500,000). Do not trust it.
+Outcome: iycf_bin60, score >= 6  (180 events / 227 non-events)
+   No empty outcome cell in any categorical candidate.
+Budget check:
+   iycf_bin   supports ~7 predictor df; iycf_bin60 supports ~18.
+   The bivariate screen selects more candidates than iycf_bin can carry,
+   so the adjusted binary model on iycf_bin must either drop predictors,
+   use iycf_bin60, or defer to the ordinal model on iycf_cat, which uses
+   all 407 children without splitting them into events.
+  Candidate variables    computed    34   expected    34   ok
+  Table 4.16 rows        computed   125   expected   125   ok
+  Sig. on score p<0.05   computed    12   (no comparator - new outcome)
+
+------------------------------------------------------------------
+DONE
+------------------------------------------------------------------
+Outcome -> iycf_score (0-10) and iycf_cat (4 ordered levels), section 10.
+Tables  -> doc/Tables_IYCF.docx  (4.10-4.16)
+Figures -> Graph/Fig4_5_food_groups.png, Fig4_6_score_profile.png
+Data    -> Data/iycf_analysis.rds  (407 rows, 79 columns)
+Next    -> 05_models.R: ordinal logistic on iycf_cat, linear on iycf_score.
+NOTE    -> EC-FIES is gone from this script (decision 9). Table 4.5 in
+           01_tables_chapter4.R is still an EC-FIES table and was NOT
+           touched - decide separately whether it stays in Chapter 4.

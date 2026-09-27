@@ -574,13 +574,18 @@ table2b <- rec %>%
 # 11. TABLE 3 - Association with current vital status
 # ----------------------------------------------------------
 table3 <- data %>%
-  select(status, grading, subtype, mburden, Lung, Liver, Brain, Bone,
-         delayrx, skip, followup_reg) %>%
+  select(status, grading, subtype, mburden, 
+         Chemotherapy, Hormone_Therapy, Targeted_Therapy, 
+         Lung, Liver, Brain, Bone, delayrx, skip, followup_reg) %>%
   tbl_summary(
     by = status, statistic = all_categorical() ~ "{n} ({p}%)", missing = "no",
     label = list(
       grading ~ "Tumor grade", subtype ~ "Molecular subtype",
-      mburden ~ "Metastatic burden", Lung ~ "Lung metastasis",
+      mburden ~ "Metastatic burden", 
+      Chemotherapy ~ "Chemotherapy received",
+      Hormone_Therapy ~ "Hormone therapy received",
+      Targeted_Therapy ~ "Targeted therapy received",
+      Lung ~ "Lung metastasis",
       Liver ~ "Liver metastasis", Brain ~ "Brain metastasis",
       Bone ~ "Bone metastasis", delayrx ~ "Delayed treatment",
       skip ~ "Treatment adherence", followup_reg ~ "Follow-up attendance")) %>%
@@ -592,12 +597,17 @@ table3 <- data %>%
 # 12. TABLE 4 - Univariate + multivariate Cox regression (OS)
 #     `followup_reg` is left out on purpose - see the log.
 # ----------------------------------------------------------
-vars <- c("age_grp", "Education", "grading", "subtype", "menopause", "mburden",
+vars <- c("age_grp", "Education", "grading", "subtype", "menopause", "mburden", 
+          "Chemotherapy", "Hormone_Therapy", "Targeted_Therapy",
           "Lung", "Liver", "Brain", "Bone", "delayrx", "skip")
 var_label <- list(
   age_grp ~ "Age Group", Education ~ "Education", grading ~ "Tumor grade",
   subtype ~ "Molecular subtype", menopause ~ "Menopause",
-  mburden ~ "Metastatic burden", Lung ~ "Lung metastasis",
+  mburden ~ "Metastatic burden", 
+  Chemotherapy ~ "Chemotherapy received",
+  Hormone_Therapy ~ "Hormone therapy received",
+  Targeted_Therapy ~ "Targeted therapy received",
+  Lung ~ "Lung metastasis",
   Liver ~ "Liver metastasis", Brain ~ "Brain metastasis",
   Bone ~ "Bone metastasis", delayrx ~ "Delayed treatment",
   skip ~ "Treatment adherence")

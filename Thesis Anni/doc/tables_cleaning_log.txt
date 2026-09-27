@@ -1,0 +1,150 @@
+Rows read from Data/MAIN.sav: 407
+
+--- CORRECTION 1: birth weight ---
+  Forms recorded in kilograms (value < 10), multiplied by 1000: 7
+    values: 2.2, 2.5, 2.8, 3, 3, 3.2, 3.9
+  Coded 98 = 'don't know', set to a category rather than a number: 88
+  After the fix: LBW <2500 g = 48, >=2500 g = 271, don't know = 88  (total 407)
+  Draft reported 92 / 219 / 88, which sums to 399, not 407.
+  IMPLAUSIBLE VALUE remaining, verify against the paper form: 700, 800 g
+
+--- CORRECTION 2: religion ---
+  Hindu n = 19 of 407 = 4.7%  (draft printed '47')
+
+--- CORRECTION 3: wealth quintile ---
+  Ncombsco is populated for all 407 respondents; the draft left these rows blank.
+
+--- CORRECTION 4: child age ---
+  Date of birth missing for 18 children; approx_age recovers all of them.
+  Draft age-group rows summed to 389, losing those 18.
+  OUT OF ELIGIBLE RANGE (6-23 months): n = 2 (ages 5, 24 months)
+
+--- CORRECTION 5: father's occupation ---
+  Draft: Agriculture 139 / Business 224 / Remittance 31 / Not working 13.
+  Those are collapses of the seven recorded categories:
+    Agriculture             33 (8.1%)
+    Day labour             106 (26.0%)
+    Business                98 (24.1%)
+    Service / job-holder    98 (24.1%)
+    Remittance earner       31 (7.6%)
+    Not working             13 (3.2%)
+    Other                   28 (6.9%)
+  33 + 106 = 139 was labelled 'Agriculture'; 98 + 98 + 28 = 224 was
+  labelled 'Business' although most of it is salaried employment.
+
+--- EC-FIES completeness ---
+  Complete on all 8 items: 392 of 407
+  1 item missing: 13 | 2 items missing: 2
+
+=== Table 3.1  Sample by division ===
+# A tibble: 9 × 3
+  Division   n     pct  
+  <chr>      <chr> <chr>
+1 Barisal    48    11.8 
+2 Chittagong 48    11.8 
+3 Dhaka      70    17.2 
+4 Khulna     48    11.8 
+5 Mymensingh 49    12.0 
+6 Rajshahi   48    11.8 
+7 Rangpur    48    11.8 
+8 Sylhet     48    11.8 
+9 Total      407   100.0
+
+=== Table 4.1  Household characteristics ===
+  Characteristic   n  pct
+       Residence         
+           Urban 150 36.9
+           Rural 257 63.1
+  Type of family         
+         Nuclear 173 42.5
+           Joint 234 57.5
+  Household size         
+      ≤4 members 135 33.2
+     5-6 members 172 42.3
+      ≥7 members 100 24.6
+        Religion         
+          Muslim 388 95.3
+           Hindu  19  4.7
+ Wealth quintile         
+         Poorest  81 19.9
+          Poorer  82 20.1
+          Middle  81 19.9
+          Richer  82 20.1
+         Richest  81 19.9
+
+=== Table 4.2  Child characteristics ===
+                 Characteristic   n  pct
+                            Sex         
+                           Male 226 55.5
+                         Female 181 44.5
+                      Age group         
+                     6-8 months  83 20.4
+                    9-11 months  96 23.6
+                   12-17 months 141 34.6
+                   18-23 months  87 21.4
+                    Birth order         
+                          First 168 41.3
+                         Second 145 35.6
+                          Third  73 17.9
+               Fourth or higher  21  5.2
+                   Birth weight         
+     Low birth weight (<2.5 kg)  48 11.8
+                        ≥2.5 kg 271 66.6
+                     Don't know  88 21.6
+
+=== Table 4.3  Maternal characteristics ===
+          Characteristic   n  pct
+      Educational status         
+     No formal education  20  4.9
+                 Primary 111 27.3
+               Secondary 177 43.5
+        Higher secondary  67 16.5
+        Higher education  32  7.9
+              Occupation         
+               Housewife 385 94.6
+        Employed / other  22  5.4
+         Age at marriage         
+               <18 years 219 53.8
+               ≥18 years 188 46.2
+      Age at first birth         
+               <20 years 258 63.4
+             20-34 years 149 36.6
+
+=== Table 4.4  Paternal characteristics ===
+           Characteristic   n  pct
+       Educational status         
+      No formal education  63 15.5
+                  Primary 120 29.5
+                Secondary 122 30.0
+         Higher secondary  62 15.2
+         Higher education  40  9.8
+               Occupation         
+              Agriculture  33  8.1
+               Day labour 106 26.0
+                 Business  98 24.1
+     Service / job-holder  98 24.1
+        Remittance earner  31  7.6
+              Not working  13  3.2
+                    Other  28  6.9
+
+=== Table 4.5  EC-FIES by division and residence ===
+      Division Residence   N Food secure       Mild  Moderate   Severe
+       Barisal     Urban  17    6 (35.3)   6 (35.3)  3 (17.6) 2 (11.8)
+       Barisal     Rural  27   11 (40.7)   8 (29.6)  5 (18.5) 3 (11.1)
+    Chittagong     Urban  13    6 (46.2)   4 (30.8)  2 (15.4)  1 (7.7)
+    Chittagong     Rural  34   10 (29.4)  17 (50.0)   3 (8.8) 4 (11.8)
+         Dhaka     Urban  59   40 (67.8)  11 (18.6)  6 (10.2)  2 (3.4)
+         Dhaka     Rural  10    5 (50.0)   4 (40.0)  1 (10.0)  0 (0.0)
+        Khulna     Urban  11    7 (63.6)    1 (9.1)  2 (18.2)  1 (9.1)
+        Khulna     Rural  35   21 (60.0)  11 (31.4)   2 (5.7)  1 (2.9)
+    Mymensingh     Urban  15    6 (40.0)   6 (40.0)   1 (6.7) 2 (13.3)
+    Mymensingh     Rural  33   12 (36.4)  12 (36.4)   3 (9.1) 6 (18.2)
+      Rajshahi     Urban   8    3 (37.5)   3 (37.5)  2 (25.0)  0 (0.0)
+      Rajshahi     Rural  39   18 (46.2)  13 (33.3)  5 (12.8)  3 (7.7)
+       Rangpur     Urban  11    5 (45.5)   5 (45.5)   0 (0.0)  1 (9.1)
+       Rangpur     Rural  36   13 (36.1)  19 (52.8)  4 (11.1)  0 (0.0)
+        Sylhet     Urban  11    7 (63.6)    1 (9.1)  2 (18.2)  1 (9.1)
+        Sylhet     Rural  33   13 (39.4)   8 (24.2)  5 (15.2) 7 (21.2)
+ All divisions     Urban 145   80 (55.2)  37 (25.5) 18 (12.4) 10 (6.9)
+ All divisions     Rural 247  103 (41.7)  92 (37.2) 28 (11.3) 24 (9.7)
+ All divisions     Total 392  183 (46.7) 129 (32.9) 46 (11.7) 34 (8.7)

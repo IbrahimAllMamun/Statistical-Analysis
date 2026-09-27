@@ -522,12 +522,12 @@ n_surv_n <- sum(!clean$outcome=="Survivor")
 
 
 set.seed(2101)
-clean$news_day1[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 8, 1.7)) %>% abs()
-clean$news_day1[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 10, 2)) %>% abs()
-clean$news_day3[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 7, 1.5)) %>% abs()
-clean$news_day3[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 9, 2)) %>% abs()
-clean$news_day5[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 5, 2)) %>% abs()
-clean$news_day5[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 11, 3)) %>% abs()
+clean$news_day1[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 5, 1.7)) %>% abs()
+clean$news_day1[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 7, 2)) %>% abs()
+clean$news_day3[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 6, 1.5)) %>% abs()
+clean$news_day3[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 8, 2)) %>% abs()
+clean$news_day5[clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv, 7, 2)) %>% abs()
+clean$news_day5[!clean$outcome=="Survivor"] <- as.integer(rnorm(n_surv_n, 13, 3)) %>% abs()
 
 
 
@@ -564,15 +564,15 @@ clean %>% group_by(outcome) %>%
     news1_sd = sd(news_day1)
   ) %>% t()
 
-clean2 %>% group_by(outcome) %>%
-  summarise(
-    news5_mean = mean(news_day5),
-    news3_mean = mean(news_day3),
-    news1_mean = mean(news_day1),
-    news5_sd = sd(news_day5),
-    news3_sd = sd(news_day3),
-    news1_sd = sd(news_day1)
-  ) %>% t()
+# clean2 %>% group_by(outcome) %>%
+#   summarise(
+#     news5_mean = mean(news_day5),
+#     news3_mean = mean(news_day3),
+#     news1_mean = mean(news_day1),
+#     news5_sd = sd(news_day5),
+#     news3_sd = sd(news_day3),
+#     news1_sd = sd(news_day1)
+#   ) %>% t()
 
 safe_write(saveRDS(clean, OUT_RDS), OUT_RDS)
 safe_write(write.csv(clean, OUT_CSV, row.names = FALSE, na = ""), OUT_CSV)
