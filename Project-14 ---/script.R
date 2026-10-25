@@ -1023,3 +1023,109 @@ walk(capture.output(print(as.data.frame(table4_df), row.names = FALSE)), note)
 safe_write(writeLines(LOG, OUT_LOG), OUT_LOG)
 message("Saved -> Graph/Fig1_ROC_NEWS.png")
 message("Saved -> Graph/Fig2_ROC_NLPR.png")
+
+
+analysis$death
+
+analysis %>% 
+  transmute(
+    nlpr = if_else(nlpr_day1>=14.25, ">=14.25", "<14.25") %>% factor(labels = c(">=14.25", "<14.25")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(nlpr) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/nlpr1.csv", row.names = F)
+
+
+analysis %>% 
+  transmute(
+    nlpr = if_else(is.na(nlpr_day3), 9, nlpr_day3),
+    nlpr = if_else(nlpr>=8.5, ">=8.5", "<8.5") %>% factor(labels = c(">=8.5", "<8.5")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(nlpr) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/nlpr3.csv", row.names = F)
+
+
+analysis %>% 
+  transmute(
+    nlpr = if_else(nlpr_day5>=7.5, ">=7.5", "<7.5") %>% factor(labels = c(">=7.5", "<7.5")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(nlpr) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/nlpr5.csv", row.names = F)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+analysis %>% 
+  transmute(
+    news = if_else(news_day1>=5.5, ">=5.5", "<5.5") %>% factor(labels = c(">=5.5", "<5.5")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(news) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/news1.csv", row.names = F)
+
+
+analysis %>% 
+  transmute(
+    news = if_else(news_day3>=7.5, ">=7.5", "<7.5") %>% factor(labels = c(">=7.5", "<7.5")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(news) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/news3.csv", row.names = F)
+
+
+
+analysis %>% 
+  transmute(
+    news = if_else(news_day5>=10.5, ">=10.5", "<10.5") %>% factor(labels = c(">=10.5", "<10.5")),
+    survived = if_else(death!=1, 1, 0),
+    death = if_else(death==1, 1, 0)
+  ) %>% 
+  group_by(news) %>% 
+  summarise(
+    Survived = sum(survived),
+    Death = sum(death),
+  ) %>% 
+  write.csv("doc/news5.csv", row.names = F)
+
