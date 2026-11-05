@@ -1029,7 +1029,7 @@ analysis$death
 
 analysis %>% 
   transmute(
-    nlpr = if_else(nlpr_day1>=14.25, ">=14.25", "<14.25") %>% factor(labels = c(">=14.25", "<14.25")),
+    nlpr = if_else(nlpr_day1>=14.25, ">=14.25", "<14.25"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
@@ -1044,7 +1044,7 @@ analysis %>%
 analysis %>% 
   transmute(
     nlpr = if_else(is.na(nlpr_day3), 9, nlpr_day3),
-    nlpr = if_else(nlpr>=8.5, ">=8.5", "<8.5") %>% factor(labels = c(">=8.5", "<8.5")),
+    nlpr = if_else(nlpr>=8.5, ">=8.5", "<8.5"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
@@ -1058,7 +1058,7 @@ analysis %>%
 
 analysis %>% 
   transmute(
-    nlpr = if_else(nlpr_day5>=7.5, ">=7.5", "<7.5") %>% factor(labels = c(">=7.5", "<7.5")),
+    nlpr = if_else(nlpr_day5>=7.5, ">=7.5", "<7.5"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
@@ -1089,7 +1089,7 @@ analysis %>%
 
 analysis %>% 
   transmute(
-    news = if_else(news_day1>=5.5, ">=5.5", "<5.5") %>% factor(labels = c(">=5.5", "<5.5")),
+    news = if_else(news_day1>=5.5, ">=5.5", "<5.5"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
@@ -1103,7 +1103,7 @@ analysis %>%
 
 analysis %>% 
   transmute(
-    news = if_else(news_day3>=7.5, ">=7.5", "<7.5") %>% factor(labels = c(">=7.5", "<7.5")),
+    news = if_else(news_day3>=7.5, ">=7.5", "<7.5"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
@@ -1118,7 +1118,7 @@ analysis %>%
 
 analysis %>% 
   transmute(
-    news = if_else(news_day5>=10.5, ">=10.5", "<10.5") %>% factor(labels = c(">=10.5", "<10.5")),
+    news = if_else(news_day5>=10.5, ">=10.5", "<10.5"),
     survived = if_else(death!=1, 1, 0),
     death = if_else(death==1, 1, 0)
   ) %>% 
