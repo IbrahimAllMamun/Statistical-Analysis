@@ -1,0 +1,70 @@
+Project 9 -- revision model log -- 2026-11-05 12:06:29 
+
+Rows read: 414; missing in model data: 0 
+
+Age (4 groups) x years since graduation -- why age is collapsed: 
+       Graduation
+Age      <6 6-10 >10
+  <=40   96  122  50
+  41-50  20    2  82
+  51-60   5    0  30
+  60+     1    0   6
+
+Age (merged) x years since graduation: 
+      Graduation
+Age     <6 6-10 >10
+  <=40  96  122  50
+  >40   26    2 118
+
+Submitted models -- aORs reproduced (compare with manuscript Tables 5-6): 
+                  know_breast know_cervical prac_breast prac_cervical
+age441-50                0.87          1.28        1.08          1.75
+age451-60                0.74          0.59        1.34          2.40
+age460+                  0.40          1.25        0.81          1.48
+SexFemale                1.15          1.63        1.33          1.11
+FamilyYes                0.64          0.59        1.99          1.19
+dgraduation6-10          0.74          0.84        0.70          4.81
+dgraduation>10           0.98          0.81        0.66          2.14
+dx_self_cancerYes        2.08          0.81        2.49          0.89
+know_ca_scrnYes          2.03          0.94        0.83          1.11
+att_ca_scrnYes           5.74          2.79        1.49          0.69
+deptClinical             0.56          0.85        1.16          4.81
+
+Table 6, cervical: the two aORs printed as 4.81 at 4 d.p. -> 4.8085 (6-10 y) and 4.8079 (clinical): a genuine coincidence of rounding, not a copy error. 
+
+Events per parameter and model fit: 
+                     Model    Design   N     Events Parameters       EPV
+1   Good knowledge, breast Submitted 414 114 (poor)         11 10.363636
+2 Good knowledge, cervical Submitted 414 120 (poor)         11 10.909091
+3    Good practice, breast Submitted 414  61 (good)         11  5.545455
+4  Good practice, cervical Submitted 414  67 (good)         11  6.090909
+5   Good knowledge, breast   Revised 414 114 (poor)          9 12.666667
+6 Good knowledge, cervical   Revised 414 120 (poor)          9 13.333333
+7    Good practice, breast   Revised 414  61 (good)          9  6.777778
+8  Good practice, cervical   Revised 414  67 (good)          9  7.444444
+                  LR Nagelkerke              AUC               HL   MaxVIF
+1 44.17 (11), <0.001 0.14626981 0.69 (0.64–0.75)  8.19 (8), 0.415 1.326737
+2  21.85 (11), 0.026 0.07344750 0.63 (0.57–0.69)  5.07 (8), 0.750 1.309719
+3  13.68 (11), 0.251 0.05736363 0.64 (0.56–0.71)  5.31 (8), 0.724 1.307767
+4  27.98 (11), 0.003 0.11123633 0.68 (0.62–0.75)  2.48 (8), 0.963 1.488231
+5  43.33 (9), <0.001 0.14363668 0.69 (0.63–0.75) 12.08 (8), 0.148 1.729698
+6   18.52 (9), 0.030 0.06249105 0.62 (0.57–0.68)  9.51 (8), 0.301 1.684427
+7   13.43 (9), 0.144 0.05631733 0.64 (0.56–0.72)  4.73 (8), 0.787 1.695842
+8   27.52 (9), 0.001 0.10949141 0.68 (0.62–0.75)  5.30 (8), 0.725 2.187101
+
+Univariable (LR test) p-values by outcome -- the p<0.25 screen described in Methods: 
+               know_breast know_cervical prac_breast prac_cervical
+age2                 0.680         0.544       0.888         0.350
+Sex                  0.222         0.031       0.265         0.722
+Family               0.337         0.072       0.014         0.723
+dgraduation          0.236         0.372       0.475         0.001
+dx_self_cancer       0.192         0.571       0.017         0.866
+know_ca_scrn         0.000         0.644       0.962         0.678
+att_ca_scrn          0.000         0.003       0.352         0.273
+dept                 0.110         0.524       0.782         0.002
+Firth check (prac_breast): max |Newton - optim| coefficient difference = 9.05e-08 
+Firth check (prac_cervical): max |Newton - optim| coefficient difference = 1.31e-07 
+logistf not installed -- check 2 skipped. 
+Written: doc/Revised_Models_Tables5_6.docx 
+
+Done. 
