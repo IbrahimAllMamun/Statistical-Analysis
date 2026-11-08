@@ -109,6 +109,7 @@ fig, ax = plt.subplots(figsize=(7, 4), dpi=200)
 ax.hist(s, bins=np.arange(0, 50, 2), color="#0072B2", edgecolor="white")
 for x in (5.5, 10.5, 19.5):
     ax.axvline(x, color="#E69F00", ls="--", lw=1)
+ax.set_ylim(0, ax.get_ylim()[1] * 1.25)  # headroom so band labels clear the bars
 ymax = ax.get_ylim()[1]
 for x, lab in [(3, "Mild"), (8, "Moderate"), (15, "High"), (33, "Very high")]:
     ax.text(x, ymax * 0.95, lab, ha="center", va="top", fontsize=8, color="#444444")
