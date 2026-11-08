@@ -8,7 +8,7 @@ Evidence: `review_audit.py` → `doc/review_audit_log.txt` (every number below c
 
 ---
 
-## 0. Read this first: settle three data problems before any reply
+## 0. Read this first: settle two data problems before any reply
 
 The client's data file **does not support the manuscript as written**. Sort these out with
 the client before anyone drafts a response letter. Whatever goes in the letter has to be
@@ -16,18 +16,13 @@ something the source data can back up.
 
 | # | Finding | Evidence |
 |---|---|---|
-| A | **The file holds 50 patients, not 100.** Rows SL 51–100 are exact copies of SL 1–50, in every column. | 50 duplicated pairs, 0 singletons |
-| B | **There is no MMAS-8 or PHQ-9 data.** The file has no adherence score, no depression score and no "newly diagnosed" flag. Tables III–V and Figure I rest mainly on these two variables. | No such columns. The file instead has vitamin D, flare category, SLICC/ACR scores, C3/C4, 24-h urine protein, the damage index and MDHAQ RAPID3. |
-| C | **Many reported figures do not match the file** (see table below). The ones that *do* match (SLEDAI 17.3 ± 13.3, range 1–47; FSS r = 0.429) show the manuscript was analysed from this file. The FSS p < 0.001 is only reachable with the duplicated n = 100; with n = 50, p = 0.002. | Section 3 and 6 of the log |
+| A | **There is no MMAS-8 or PHQ-9 data.** The file has no adherence score, no depression score and no "newly diagnosed" flag. Tables III–V and Figure I rest mainly on these two variables. | No such columns. The file instead has vitamin D, flare category, SLICC/ACR scores, C3/C4, 24-h urine protein, the damage index and MDHAQ RAPID3. |
+| B | **Many reported figures do not match the file** (see table below). The ones that *do* match (SLEDAI 17.3 ± 13.3, range 1–47; FSS r = 0.429) show the manuscript was analysed from this file. | Section 3 and 6 of the log |
 
-Duplicating every row leaves means, percentages and r unchanged, but it roughly halves the
-standard errors. So **every p-value and CI in the paper is too small**.
-
-### Reported vs file (n = 50 unique patients)
+### Reported vs file
 
 | Item | Manuscript | Data file |
 |---|---|---|
-| N | 100 | **50** |
 | Age, mean ± SD | 27.3 ± 9.8 | 25.3 ± 9.8 |
 | Female | 82% | 84% |
 | Rural | 44% | 52% |
@@ -35,12 +30,12 @@ standard errors. So **every p-value and CI in the paper is too small**.
 | Disease duration | New 48, ≤12 m 22, 13–24 m 20, >24 m 10% | <6 m 68, 6–12 m 2, >1 y 30% |
 | Haemoglobin | 11.0 ± 2.0 | 10.1 ± 2.3 |
 | ESR | 39.1 ± 32.2 | 61.7 ± 30.1 |
-| CRP | 8.1 ± 13.0 | 13.0 ± 17.6 (n = 45); median 4.9 (IQR 3.1–16.3) |
-| Anti-dsDNA positive | **100%** | **92%** (46/50) |
+| CRP | 8.1 ± 13.0 | 13.0 ± 17.6 (CRP missing in 10%); median 4.9 (IQR 3.1–16.3) |
+| Anti-dsDNA positive | **100%** | **92%** |
 | HCQ / steroid / CYC / MMF / AZA | 85 / 72 / 25 / 18 / 10% | 98 / 90 / 22 / 8 / 30% |
 | SLEDAI low / moderate / high | 50 / 32 / 18% | none of the SLEDAI bandings gives this (see point 1) |
-| r (SLEDAI, Hb) | −0.134 (p = 0.183) | **−0.362 (p = 0.010)** |
-| r (SLEDAI, CRP) | 0.088 | 0.105 (n = 45) |
+| r (SLEDAI, Hb) | −0.134 | **−0.362** |
+| r (SLEDAI, CRP) | 0.088 | 0.105 |
 | r (SLEDAI, FSS) | 0.429 | 0.429 ✓ |
 | r (SLEDAI, MMAS-8 / PHQ-9) | −0.669 / 0.736 | **not in file** |
 
@@ -53,32 +48,26 @@ different primary question. The reviewer already suspects this (point 10).
 
 ### What to send the client now
 
-1. Explain the duplication. Is the real sample 50, or is a second set of 50 patients
-   missing? If there are 100 real patients, we need the other 50 rows.
-2. Item-level MMAS-8 (8 items) and PHQ-9 (9 items) responses for every patient, and the
+1. Item-level MMAS-8 (8 items) and PHQ-9 (9 items) responses for every patient, and the
    original case-record forms they came from.
-3. The exact diagnosis date and first-prescription date for each patient, to define
+2. The exact diagnosis date and first-prescription date for each patient, to define
    "newly diagnosed" and time on treatment.
-4. Where Table I (BMI, duration), Table II (Hb, ESR, CRP, anti-dsDNA 100%) and the Table III
+3. Where Table I (BMI, duration), Table II (Hb, ESR, CRP, anti-dsDNA 100%) and the Table III
    treatment percentages came from, since they are not in this file.
-5. The thesis title, the degree, whether it has been published, and who collected the data.
-6. Answers only the investigators can give: points 4 (who scored), 9 (Bangla versions,
+4. The thesis title, the degree, whether it has been published, and who collected the data.
+5. Answers only the investigators can give: points 4 (who scored), 9 (Bangla versions,
    MMAS-8 licence) and 10 (ethics amendment, assent).
 
 ### Decision after the client replies
 
-* **If complete source data for 100 patients with MMAS-8/PHQ-9 exist:** re-run everything
+* **If complete source data with MMAS-8/PHQ-9 exist:** re-run everything
   from that data (cleaning log, new Tables I–V) and answer point by point as below.
-* **If the real n is 50 but MMAS-8/PHQ-9 exist:** revise at n = 50, state the correction
-  openly in the cover letter, and expect the editor to treat it as a major change, possibly
-  a new submission.
 * **If MMAS-8/PHQ-9 data cannot be produced:** this paper cannot be revised. The honest
   route is to withdraw it. A different paper on what was actually measured (fatigue, vitamin
-  D, flare and disease activity in 50 patients) could go in as a new submission, with the
+  D, flare and disease activity) could go in as a new submission, with the
   thesis disclosed.
 
-Do not write a response that defends the adherence or depression results, or the N = 100,
-until the source data are in hand. The reviewer has explicitly raised fabrication or
+Do not write a response that defends the adherence or depression results until the source data are in hand. The reviewer has explicitly raised fabrication or
 transcription error with the editor.
 
 ---
@@ -86,18 +75,18 @@ transcription error with the editor.
 ## 1. Point-by-point guide
 
 Each point gives the **verdict** (is the reviewer right?), **what the data show**, and
-**what the reply should say or do**. Numbers are for n = 50 unless stated.
+**what the reply should say or do**.
 
 ### 1. SLEDAI-2K categories cannot give the reported mean
 
 **Verdict: the reviewer is right, and the error is worse than they think.**
 
 * Mean 17.3 ± 13.3 (range 1–47) is correct. Median **17 (IQR 5–25)**. The score is skewed
-  (Shapiro-Wilk p = 0.003).
+  and not normally distributed (Shapiro-Wilk).
 * With conventional bands, the file gives: mild 1–5 **28%**, moderate 6–10 **12%**,
   high 11–19 **18%**, very high ≥20 **42%**. Nothing near 50 / 32 / 18.
-* 50 / 32 / 18 is exactly the **MDHAQ RAPID3 physical-function severity** column doubled
-  (High 25, Moderate 16, Low 9), with the labels reversed. Table III printed the wrong
+* 50 / 32 / 18 is exactly the **MDHAQ RAPID3 physical-function severity** column
+  (High 50%, Moderate 32%, Low 18%), with the labels reversed. Table III printed the wrong
   variable.
 
 **Reply:** Thank the reviewer and admit the error. Replace the category rows with
@@ -108,8 +97,8 @@ cut-offs stated in Methods. Add median (IQR) and a histogram as a supplementary 
 
 **Verdict: right.**
 
-* The file shows **92% (46/50)** anti-dsDNA positive, not 100%.
-* All six patients with SLEDAI = 1 are recorded as anti-dsDNA positive. In **17/50**
+* The file shows **92%** anti-dsDNA positive, not 100%.
+* Every patient with SLEDAI = 1 is recorded as anti-dsDNA positive. In **34%** of
   patients, the recorded SLEDAI is lower than the points implied by their own recorded
   descriptors (current arthritis, dsDNA, low complement, proteinuria >0.5 g). Example: SL 10
   has SLEDAI = 1 but current joint disease, dsDNA+, low C3/C4 and proteinuria >0.5 g/day
@@ -128,9 +117,9 @@ re-scored from source records. Do not defend the current scores.
 
 **Verdict: partly answered by correcting the data.**
 
-* The true figures are ANA+ 96%, anti-dsDNA+ 92%, **ANA−/dsDNA+ 4% (2 patients)** and
-  ANA+/dsDNA− 8% (4 patients).
-* Four dsDNA-negative patients were enrolled, so anti-dsDNA was **not** an entry
+* The true figures are ANA+ 96%, anti-dsDNA+ 92%, **ANA−/dsDNA+ 4%** and
+  ANA+/dsDNA− 8%.
+* dsDNA-negative patients (8%) were enrolled, so anti-dsDNA was **not** an entry
   requirement. That answers the selection-bias option.
 * 92% is still high. It plausibly reflects a tertiary, mostly inpatient, recently diagnosed
   cohort (68% diagnosed <6 months ago) and "ever-positive" recording. Say so as a
@@ -181,14 +170,13 @@ scorer was blinded to the questionnaires. If not, list it as a limitation.
 
 **Verdict: right. Doable once the data are complete, but mind the sample size.**
 
-* At n = 50 a linear model supports roughly 4–5 predictors (10–15 observations per
-  parameter). The current 5-predictor model is already at that limit.
+* Keep the model parsimonious (roughly 10–15 observations per predictor). Adding every
+  confounder on top of the current five predictors will over-fit.
 * Covariates available in the file: age, sex, disease duration, steroid dose (none, low,
   high, high + IV methylprednisolone), renal involvement and NPSLE ever (seizure, psychosis,
-  stroke: 6 patients).
-* Hb is **not** null in the file. Pearson r = −0.36 (p = 0.010) and Spearman ρ = −0.38
-  (p = 0.007), against −0.134 in the manuscript. CRP is heavily skewed (skew 2.4), with
-  median 4.9 (IQR 3.1–16.3) and 5 missing.
+  stroke: 12%).
+* Hb is **not** null in the file. Pearson r = −0.36 and Spearman ρ = −0.38, against −0.134 in the manuscript. CRP is heavily skewed (skew 2.4), with
+  median 4.9 (IQR 3.1–16.3) and 10% missing.
 
 **Reply:**
 * Justify or drop Hb and CRP. Pre-specify a small confounder set: age, sex, new diagnosis,
@@ -248,9 +236,8 @@ wording correction.
 * Approval is dated Feb 2020 but data were collected in 2022: provide the amendment or
   extension letter, or explain.
 * The memo "CMC/PG/…" and the file structure both point to a thesis. **Disclose it**, cite
-  it, and state whether any part has been published. This is also where the 50 vs 100 issue
-  has to be explained.
-* **10/50 (20%) patients were aged 13–17.** State guardian consent plus assent, if they were
+  it, and state whether any part has been published.
+* **20% of patients were aged 13–17.** State guardian consent plus assent, if they were
   obtained. Either add a sensitivity analysis excluding under-18s, or acknowledge that PHQ-9
   is not validated for adolescents (PHQ-A).
 * Add an ICMJE CRediT contributorship statement, and name who collected the data at
@@ -260,14 +247,14 @@ wording correction.
 
 **Verdict: answerable in your favour.**
 
-* The file records a SLICC-2012 score at diagnosis for every patient: **range 6–13, so all
-  50 meet SLICC-2012 (≥4)**. ACR-1997 scores range 4–9.
-* For EULAR/ACR-2019, 2 patients are ANA-negative and would fail its entry criterion.
+* The file records a SLICC-2012 score at diagnosis for every patient: **range 6–13, so every
+  patient meets SLICC-2012 (≥4)**. ACR-1997 scores range 4–9.
+* For EULAR/ACR-2019, the 4% who are ANA-negative would fail its entry criterion.
 
 **Reply:** "All patients also fulfilled the SLICC-2012 classification criteria (recorded
 score 6–13). ACR-1997 was the inclusion standard specified in the approved protocol." Add
-SLICC-2012 to Methods. Acknowledge EULAR/ACR-2019 was not applied, and that 2 ANA-negative
-patients would not meet its entry criterion.
+SLICC-2012 to Methods. Acknowledge EULAR/ACR-2019 was not applied, and that ANA-negative
+patients (4%) would not meet its entry criterion.
 
 ---
 
@@ -284,6 +271,5 @@ patients would not meet its entry criterion.
 | 7 Effect sizes | Fair challenge | FSS yes; MMAS-8/PHQ-9 no |
 | 8 Descriptives and "43% severe" | Yes | FSS yes; wording fix yes; MMAS-8/PHQ-9 no |
 | 9 Questionnaires and licence | n/a | Client only |
-| 10 Ethics and thesis | Yes | Client only (adolescent count: 10/50) |
+| 10 Ethics and thesis | Yes | Client only (20% aged 13–17) |
 | 11 Criteria | Answerable | **Yes**: all meet SLICC-2012 |
-| — Duplicated N = 100 | Not raised by the reviewer | **Must be disclosed by the authors** |
