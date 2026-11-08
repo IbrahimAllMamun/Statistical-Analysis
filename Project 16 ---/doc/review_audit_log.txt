@@ -1,0 +1,109 @@
+========================================================================
+2. DUPLICATION
+========================================================================
+Rows in file: 100; distinct patient records: 50
+Duplicated pairs: 50 (first: [[1, 51], [2, 52], [3, 53]] ... last: [50, 100])
+Analysis set: SL 1-50
+Columns present: MMAS-8? False | PHQ-9? False | newly-diagnosed flag? False
+
+========================================================================
+3. DESCRIPTIVES (n = 50)   [manuscript value in brackets]
+========================================================================
+  Age [27.3±9.8] n=50  mean  25.26 ±  9.80 | median  22.00 (IQR 18.00-28.00) | range 13-50
+  Female [82.0%]                          42/50 (84.0%)
+  Rural [44.0%]                           26/50 (52.0%)
+  Age 13-17 (adolescents)                 10/50 (20.0%)
+  BMI <18.5                                1/50 ( 2.0%)
+  BMI 18.5-24.9                           38/50 (76.0%)
+  BMI 25-29.9                              9/50 (18.0%)
+  BMI >30                                  2/50 ( 4.0%)
+  Duration <6 Months [new 48/≤12m 22/13-24m 20/>24m 10]  34/50 (68.0%)
+  Duration 6 Month - 1 yr [new 48/≤12m 22/13-24m 20/>24m 10]   1/50 ( 2.0%)
+  Duration >1 yr [new 48/≤12m 22/13-24m 20/>24m 10]  15/50 (30.0%)
+  Hb [11.0±2.0]  n=50  mean  10.12 ±  2.27 | median  10.15 (IQR 8.83-11.82) | range 5.9-16.6
+  ESR [39.1±32.2] n=50  mean  61.68 ± 30.11 | median  67.00 (IQR 36.25-84.50) | range 4-118
+  CRP [8.1±13.0] n=45  mean  13.01 ± 17.57 | median   4.89 (IQR 3.11-16.30) | range 0.7-86
+  FSS [not given] n=50  mean   5.50 ±  1.02 | median   5.80 (IQR 5.00-6.10) | range 2.9-7
+  ANA positive [96.0%]                    48/50 (96.0%)
+  Anti-dsDNA positive [100.0%]            46/50 (92.0%)
+  ANA-neg, dsDNA-pos [4.0%]                2/50 ( 4.0%)
+  Renal involvement [LN 46.0%]            23/50 (46.0%)
+  HCQ [85.0%]                             49/50 (98.0%)
+  Cyclophosphamide [25.0%]                11/50 (22.0%)
+  MMF [18.0%]                              4/50 ( 8.0%)
+  Azathioprine [10.0%]                    15/50 (30.0%)
+  Any steroid [72.0%]                     45/50 (90.0%)
+    Prednisolone High Dose                26/50 (52.0%)
+    Prednisolone High Dose, Methylprednisolone   9/50 (18.0%)
+    Prednisolone Low Dose                 10/50 (20.0%)
+    No Use                                 5/50 (10.0%)
+  C3 low                                  27/50 (54.0%)
+  C3 normal                               11/50 (22.0%)
+  C3 high                                  1/50 ( 2.0%)
+  C3 not done                             11/50 (22.0%)
+  24-h UTP available                      46/50 (92.0%)
+  24-h UTP > 0.5 g                        26/50 (52.0%)
+
+========================================================================
+4. SLEDAI-2K (reviewer point 1)
+========================================================================
+  SLEDAI-2K      n=50  mean  17.26 ± 13.31 | median  17.00 (IQR 5.00-25.00) | range 1-47
+  skewness 0.56; Shapiro-Wilk p = 0.0026
+  SLEDAI 0 none                            0/50 ( 0.0%)
+  SLEDAI 1-5 mild                         14/50 (28.0%)
+  SLEDAI 6-10 moderate                     6/50 (12.0%)
+  SLEDAI 11-19 high                        9/50 (18.0%)
+  SLEDAI >=20 very high                   21/50 (42.0%)
+  Manuscript Table III 'Low 50 / Moderate 32 / High 18' (per 100) vs the
+  MDHAQ RAPID3 severity column (per 50):
+    Low Severity       n=9   (x2 = 18)  SLEDAI range 1-7
+    Moderate Severity  n=16  (x2 = 32)  SLEDAI range 1-23
+    High Serverity     n=25  (x2 = 50)  SLEDAI range 6-47
+
+========================================================================
+5. SLEDAI-2K PLAUSIBILITY (reviewer points 2, 4)
+========================================================================
+  Minimum SLEDAI among anti-dsDNA-positive patients: 1
+  SLEDAI of the 4 anti-dsDNA-negative patients: [21.0, 6.0, 6.0, 27.0]
+  Recorded SLEDAI below the points implied by recorded descriptors: 17/50
+    SL 31: recorded  4, implied >= 16  [Joint, Alopesia, Ulcer, dsDNA, lowC, UTP>0.5g]
+    SL 10: recorded  1, implied >= 12  [Joint, dsDNA, lowC, UTP>0.5g]
+    SL 22: recorded  5, implied >= 15  [Joint, Alopesia, Ulcer, PUO, rash, dsDNA, lowC]
+    SL  5: recorded  3, implied >= 11  [Ulcer, PUO, dsDNA, lowC, UTP>0.5g]
+    SL 42: recorded  1, implied >=  7  [Joint, PUO, dsDNA]
+    SL  9: recorded  1, implied >=  6  [Joint, dsDNA]
+    SL 19: recorded  1, implied >=  6  [Joint, dsDNA]
+    SL  1: recorded  5, implied >=  9  [PUO, dsDNA, lowC, UTP>0.5g]
+    SL  3: recorded  1, implied >=  5  [Thrombocytopenia, dsDNA, lowC]
+    SL 14: recorded  1, implied >=  5  [PUO, rash, dsDNA]
+    SL 16: recorded  9, implied >= 13  [Joint, PUO, dsDNA, lowC, UTP>0.5g]
+    SL 43: recorded  5, implied >=  9  [Joint, Thrombocytopenia, dsDNA, lowC]
+    SL 29: recorded  4, implied >=  7  [Joint, PUO, dsDNA]
+    SL 38: recorded  7, implied >= 10  [Joint, Ulcer, dsDNA, lowC]
+    SL 17: recorded  4, implied >=  6  [Joint, dsDNA]
+    SL 15: recorded  6, implied >=  7  [Joint, PUO, lowC]
+    SL 48: recorded  7, implied >=  8  [Joint, Ulcer, dsDNA]
+
+========================================================================
+6. CORRELATIONS WITH SLEDAI-2K (Table IV)  [manuscript r in brackets]
+========================================================================
+  n = 50 unique
+    FSS  [ 0.429] n=50  Pearson r= 0.429 p=0.0019 | Spearman rho= 0.412 p=0.0030
+    HB   [-0.134] n=50  Pearson r=-0.362 p=0.0099 | Spearman rho=-0.378 p=0.0067
+    CRP  [ 0.088] n=45  Pearson r= 0.105 p=0.4926 | Spearman rho= 0.187 p=0.2196
+    ESR  [   n/r] n=50  Pearson r= 0.283 p=0.0465 | Spearman rho= 0.366 p=0.0089
+    AGE  [   n/r] n=50  Pearson r=-0.069 p=0.6321 | Spearman rho=-0.002 p=0.9877
+  n = 100 as delivered (duplicated)
+    FSS  [ 0.429] n=100 Pearson r= 0.429 p=0.0000 | Spearman rho= 0.412 p=0.0000
+    HB   [-0.134] n=100 Pearson r=-0.362 p=0.0002 | Spearman rho=-0.378 p=0.0001
+    CRP  [ 0.088] n=90  Pearson r= 0.105 p=0.3249 | Spearman rho= 0.187 p=0.0782
+    ESR  [   n/r] n=100 Pearson r= 0.283 p=0.0043 | Spearman rho= 0.366 p=0.0002
+    AGE  [   n/r] n=100 Pearson r=-0.069 p=0.4928 | Spearman rho=-0.002 p=0.9824
+  MMAS-8 [-0.669] and PHQ-9 [0.736]: NOT IN DATA FILE -- cannot be checked.
+
+========================================================================
+7. CLASSIFICATION CRITERIA (reviewer point 11)
+========================================================================
+  ACR-1997 score at diagnosis: range 4-9; >=4 in 50/50
+  SLICC-2012 score at diagnosis: range 6-13; >=4 in 50/50
+  ANA-negative (fail EULAR/ACR-2019 entry criterion): 2/50
