@@ -48,6 +48,13 @@ ul{margin:6px 0;padding-left:20px}
 li{margin:3px 0}
 img{max-width:100%;height:auto;border-radius:6px;background:#fff;margin:8px 0}
 .note{font-size:.85rem;color:var(--muted)}
+.part-label{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin:16px 0 4px;padding-top:10px;border-top:1px dashed var(--line)}
+blockquote.verbatim{color:var(--ink);font-size:.93rem;border-left:3px solid var(--accent);border-radius:0 6px 6px 0}
+blockquote.verbatim p{margin:0 0 8px}
+blockquote.verbatim p:last-child{margin-bottom:0}
+blockquote.verbatim ul{margin:0 0 8px}
+.head + .part-label{border-top:0;padding-top:0}
+.plain{background:var(--client-bg);border-radius:6px;padding:10px 12px;margin:6px 0 10px;font-size:.93rem}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:10px 0 4px}
 .stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
 .stat b{display:block;font-size:1.4rem}
@@ -60,7 +67,7 @@ nav a{color:var(--accent);text-decoration:none}
 
 <h1>Reviewer comments: point-by-point fixes</h1>
 <p class="sub">Project 16 · SLE disease activity, adherence, depression and fatigue · Manuscript JOM-[2027]-final<br>
-Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code>review_fixes.py</code>; statistics are computed on the unique patient records in the file.</p>
+Reviewer comments are reproduced verbatim from <code>Manuscript/review.txt</code> (“Major concerns”), each followed by our explanation and the fixed values.<br>Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code>review_fixes.py</code>; statistics are computed on the unique patient records in the file.</p>
 
 <div class="grid">
   <div class="stat"><b style="color:var(--fixed)">2</b><span>Fixed from the data (plus Tables I–III)</span></div>
@@ -90,8 +97,13 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 1 -->
 <div class="card" id="p1">
 <div class="head"><span class="num">1</span><h2>SLEDAI-2K categories cannot give the reported mean</h2><span class="chip fixed">Fixed</span></div>
-<blockquote>Category counts (50% low / 32% moderate / 18% high) cannot produce a mean of 17.3. State cut-offs; give median, IQR and a histogram.</blockquote>
-<p>The reviewer is right. The 50 / 32 / 18 split is not SLEDAI-2K: it matches the MDHAQ RAPID3 physical-function severity column (High 50%, Moderate 32%, Low 18%), with the labels reversed. Table III printed the wrong variable.</p>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>1. The SLEDAI-2K category counts cannot give the reported mean. Table III gives a mean of 17.3 ± 13.3 (range 1–47), with 50% &quot;low&quot;, 32% &quot;moderate&quot; and 18% &quot;high&quot;. No cut-offs are stated. Using the conventional bands (mild 1–5, moderate 6–10, high ≥11), I calculated the highest mean the data could produce. Even if all 18 &quot;high&quot; patients scored the maximum of 47, the mean cannot exceed 14.1. Only a non-standard scheme such as ≤10 / 11–19 / ≥20 makes 17.3 possible, and then only if almost every patient scores at the top of their band. The authors must state their cut-offs and provide the score distribution (median, IQR, histogram).</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> With the usual SLEDAI-2K bands, the category percentages in Table III cannot produce a mean of 17.3. The reviewer asks for the cut-offs, the median, the IQR and a histogram.<br><b>Verdict:</b> Correct. The categories were taken from the wrong column.</p>
+<p>The 50 / 32 / 18 split is not SLEDAI-2K: it matches the MDHAQ RAPID3 physical-function severity column (High 50%, Moderate 32%, Low 18%), with the labels reversed. Table III printed the wrong variable.</p>
 <h3>Fixed values</h3>
 <div class="grid">
   <div class="stat"><b>17.3 ± 13.3</b><span>Mean ± SD (unchanged)</span></div>
@@ -114,7 +126,12 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 2 -->
 <div class="card" id="p2">
 <div class="head"><span class="num">2</span><h2>100% anti-dsDNA contradicts a minimum SLEDAI-2K of 1</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>If every patient was anti-dsDNA positive at assessment, no one could score below 2. Either the antibody results are historical or the immunological items were left out.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>2. &quot;100% anti-dsDNA positive&quot; contradicts a minimum SLEDAI-2K of 1. In SLEDAI-2K, raised DNA binding scores 2 points if the descriptor is present at the time of the visit or in the preceding 10 days. If every patient was anti-dsDNA positive at assessment, no patient could score below 2. So either the antibody results are historical, or the SLEDAI scoring left out the immunological items. Either way, the scoring is suspect.  (clinicaltrials)</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> An anti-dsDNA-positive patient scores at least 2 on SLEDAI-2K, so a 100% positive cohort cannot have a minimum score of 1. Either the antibody results are old, or the immunological items were left out of the score.<br><b>Verdict:</b> Correct. The 100% figure is also wrong.</p>
 <h3>Fixed values</h3>
 <ul>
 <li>Anti-dsDNA positive: <span class="was">100%</span> → <span class="now">92%</span>.</li>
@@ -128,7 +145,18 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 3 -->
 <div class="card" id="p3">
 <div class="head"><span class="num">3</span><h2>The serology is implausible</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>Anti-dsDNA is 60–70% in SLE, not 100%; four ANA-negative/dsDNA-positive patients. Delete the ELISA threshold paragraph; who holds the source data?</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>3. The serology itself is implausible. Anti-dsDNA is found in roughly 60–70% of SLE patients, not 100%. Four patients are reported as ANA-negative but anti-dsDNA-positive, while HEp-2 IIF ANA at 1:80 has a pooled sensitivity of 97.8%. Three explanations are possible:  (tu-dresden)</p>
+<ul>
+<li>anti-dsDNA positivity was effectively an entry requirement, which is a selection bias that must be disclosed;</li>
+<li>a low-specificity ELISA produced false positives;</li>
+<li>the data were transcribed wrongly.</li>
+</ul>
+<p>The Methods paragraph listing three commercial ELISA thresholds is irrelevant to this study and should be deleted. The sentence stating that the assay &quot;could not be independently verified from the available analytical records&quot; is very concerning. It means the authors cannot vouch for their own laboratory data. The editor needs to know who holds the source data.</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> 100% anti-dsDNA positivity, together with ANA-negative/anti-dsDNA-positive patients, is biologically unlikely. The reviewer offers three explanations: selection, a poor assay or a transcription error. They want the ELISA paragraph removed and ask who holds the source data.<br><b>Verdict:</b> Partly correct. The true figure is 92%, which rules out the entry-requirement explanation.</p>
 <h3>Fixed values</h3>
 <div class="tw"><table>
 <tr><th>Serology</th><th class="n">Manuscript</th><th class="n">Corrected %</th></tr>
@@ -149,7 +177,12 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 4 -->
 <div class="card" id="p4">
 <div class="head"><span class="num">4</span><h2>SLEDAI-2K scored without complement or urine data?</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>C3/C4 and urinalysis are not reported. State how each of the 24 descriptors was determined. Who scored, and were they blinded?</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>4. How was SLEDAI-2K scored without complement or urine data? Low complement scores 2 points, and casts, haematuria, proteinuria and pyuria score 4 each. C3/C4 and urinalysis are not reported anywhere, which matters especially with 46% lupus nephritis. The authors should state how each of the 24 descriptors was determined. They also say a &quot;treating rheumatologist&quot; scored the patients, yet recruitment was from Medicine, Nephrology and Dermatology. Who scored, and were they blinded to the questionnaires?</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> SLEDAI-2K includes complement and urine items, but the manuscript reports neither. The reviewer wants the source of each of the 24 items, and the identity and blinding of the scorer.<br><b>Verdict:</b> Partly wrong. Complement and urine protein were recorded; urine microscopy was not.</p>
 <p>Complement and 24-h urine protein <b>were</b> recorded and can be added to Table II. Urine microscopy was not.</p>
 <h3>Fixed values</h3>
 <div class="tw"><table>
@@ -194,7 +227,17 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 5 -->
 <div class="card" id="p5">
 <div class="head"><span class="num">5</span><h2>Adherence finding confounded by newly diagnosed patients</h2><span class="chip client">Needs data</span></div>
-<blockquote>Cross-tabulate adherence by diagnosis status; repeat the analysis in established disease or with new-diagnosis status as a covariate and interaction. Did MMAS-8 cover IV cyclophosphamide?</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>5. The adherence finding is confounded by newly diagnosed patients, probably fatally. 48% were newly diagnosed. Their SLEDAI-2K reflects untreated disease at presentation, so adherence cannot have caused it. MMAS-8 also asks about recent medication-taking behaviour, which is meaningless days after a first prescription. It is also striking that exactly 48% were newly diagnosed and exactly 48% had low adherence. I request:</p>
+<ul>
+<li>a cross-tabulation of adherence category by diagnosis status;</li>
+<li>the main analysis repeated in established-disease patients only, or with new-diagnosis status as a covariate (an interaction term would be better).</li>
+</ul>
+<p>In addition, cyclophosphamide (25%) is given intravenously by hospital staff, so self-reported adherence does not apply to it. Did MMAS-8 cover it?</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> About half the patients were newly diagnosed, so their disease activity reflects untreated disease and adherence cannot explain it. The reviewer asks for a cross-tabulation and an analysis that separates new from established disease, and asks about IV cyclophosphamide.<br><b>Verdict:</b> Correct. This cannot be tested until the MMAS-8 data are supplied.</p>
 <p>The data file has no MMAS-8 score and no newly-diagnosed flag, so none of the requested analyses can be run yet. The disease-duration field that is available:</p>
 <div class="tw"><table>
 <tr><th>Disease duration</th><th class="n">%</th><th class="n">SLEDAI-2K median (IQR)</th></tr>
@@ -213,7 +256,17 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 6 -->
 <div class="card" id="p6">
 <div class="head"><span class="num">6</span><h2>Unadjusted confounding, overlapping measures, diagnostics</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>Add age, sex, duration, new diagnosis, prednisolone dose, NPSLE and organ involvement; justify Hb and CRP. Give VIFs, R², adjusted R², residual diagnostics, Spearman correlations or robust models.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>6. Unadjusted confounding and overlapping measures. The model leaves out age, sex, disease duration, new-diagnosis status, prednisolone dose (a known driver of both mood and fatigue), neuropsychiatric lupus and organ involvement. Meanwhile it includes haemoglobin and CRP, which have no clear rationale (CRP is notoriously unreliable in SLE). PHQ-9 contains fatigue, sleep and appetite items, so PHQ-9 and FSS partly measure the same thing. Required additions:</p>
+<ul>
+<li>VIFs to check collinearity, plus R² and adjusted R²;</li>
+<li>residual diagnostics;</li>
+<li>Spearman correlations or a robust or transformed model, because SLEDAI is skewed (SD 13.3 against a mean of 17.3, minimum 1) and CRP (8.1 ± 13.0) cannot be summarised as a mean ± SD.</li>
+</ul>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> The model leaves out obvious confounders (age, sex, duration, steroid dose), includes Hb and CRP without a stated reason, and uses PHQ-9 and FSS, which overlap. The reviewer wants VIFs, R², residual checks and methods suited to skewed data.<br><b>Verdict:</b> Correct. Done for fatigue; the full model needs MMAS-8 and PHQ-9.</p>
 <h3>Fixed values: Spearman correlations with SLEDAI-2K</h3>
 <div class="tw"><table>
 <tr><th>Variable</th><th class="n">Manuscript Pearson r</th><th class="n">Pearson r</th><th class="n">Spearman ρ</th><th class="n">p (Spearman)</th></tr>
@@ -245,7 +298,12 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 7 -->
 <div class="card" id="p7">
 <div class="head"><span class="num">7</span><h2>Effect sizes out of line with the literature</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>r = 0.736 (PHQ-9) would be among the strongest ever reported; Liao 2022 (AUC 0.66), Mertz 2022 (fatigue tracks PGA, not SLEDAI) and a Saudi study disagree.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>7. The effect sizes are out of line with the literature. An r of 0.736 between PHQ-9 and SLEDAI-2K would be among the strongest ever reported. The authors&#x27; own reference 6 (Liao 2022) is the best comparison: it studied 325 patients with PHQ-9 and reported no correlation coefficient. Its SLEDAI-2K cut-off for predicting depression was 8.5, with an AUC of only 0.660, which is a modest association. The authors&#x27; reference 20 (Mertz) also contradicts them: the PGA (p=0.004) but not the SELENA-SLEDAI (p=0.43) was significantly associated with fatigue. A Saudi outpatient study (Lupus 2018;27:327–332) found that disease activity did not correlate with medication non-adherence. The Discussion has to address why these results are so much stronger. Without good reasons, extremely tidy, strong correlations should make the editor more suspicious, not less.  (unica)  (nih)</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> Correlations of −0.67 and 0.74 are far stronger than published studies report, including the authors’ own references. The Discussion must explain why.<br><b>Verdict:</b> A fair challenge. The fatigue result is verified; the other two cannot be checked yet.</p>
 <ul>
 <li>FSS r = 0.429 is verified from the data. Spearman ρ = 0.412; in adults only (80% of patients), ρ = 0.404.</li>
 <li>The fatigue association holds after adjustment (B = 5.40 per FSS point), and the corrected Discussion can compare it with Mertz 2022.</li>
@@ -256,7 +314,12 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 8 -->
 <div class="card" id="p8">
 <div class="head"><span class="num">8</span><h2>Missing descriptives; “43% severe” mislabel</h2><span class="chip part">Partly fixed</span></div>
-<blockquote>Report means and SDs of MMAS-8, PHQ-9 and FSS. Severe (PHQ-9 ≥20) was 21%, not 43%.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>8. Descriptive data and the depression labelling. Means and SDs of MMAS-8, PHQ-9 and FSS are not reported at all and must be added. The Abstract and Discussion say 43% had &quot;severe&quot; depressive symptoms, but severe (PHQ-9 ≥20) was 21%. The 43% is moderately severe plus severe. This misstatement must be corrected.</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> The three scales have no reported means or SDs, and “43% severe” wrongly merges the moderately severe and severe categories.<br><b>Verdict:</b> Correct on both counts.</p>
 <h3>Fixed values</h3>
 <div class="tw"><table>
 <tr><th>Scale</th><th class="n">Mean ± SD</th><th class="n">Median (IQR)</th><th class="n">Range</th></tr>
@@ -272,7 +335,17 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 9 -->
 <div class="card" id="p9">
 <div class="head"><span class="num">9</span><h2>Questionnaire language, validation, MMAS-8 licence</h2><span class="chip client">Client</span></div>
-<blockquote>Use and cite the validated Bangla PHQ-9 (Naher et al. 2021); state the Bangla FSS and MMAS-8 versions; state whether an MMAS-8 licence was held.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>9. Questionnaire language, validation and licensing.</p>
+<ul>
+<li>PHQ-9: a validated Bangla version exists (Naher et al., DUJBS 2021, 321 Bangladeshi adults). The authors should use and cite it.</li>
+<li>FSS and MMAS-8: the authors must say which Bangla versions were used and how they were validated.</li>
+<li>MMAS-8 licence: two journals retracted papers this year for unauthorized use of the scale. In June 2025, a judge ruled that neither the MMAS-4 nor the MMAS-8 is entitled to copyright protection, but retractions continue. The 2008 MMAS-8 validation paper was itself retracted in 2023 after flaws with the reported sensitivity and specificity were identified. The authors should state whether they held a licence, and the journal should decide its position.  (papers continue to face retractions for failure to license pricy tool +2)</li>
+</ul>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> Each questionnaire’s Bangla version must be named and its validation cited, and the authors must say whether they held an MMAS-8 licence.<br><b>Verdict:</b> Administrative. Only the authors can answer.</p>
 <ul>
 <li>Which Bangla PHQ-9 was used. If it was Naher et al. (DUJBS 2021), cite it.</li>
 <li>Source and validation of the Bangla FSS and MMAS-8, or the forward/back-translation procedure.</li>
@@ -283,7 +356,18 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 10 -->
 <div class="card" id="p10">
 <div class="head"><span class="num">10</span><h2>Ethics, consent and provenance</h2><span class="chip client">Client</span></div>
-<blockquote>Approval dated Feb 2020, data collected 2022; thesis disclosure; adolescents aged 13–17 need guardian consent and assent; ICMJE contributorship.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>10. Ethics, consent and provenance.</p>
+<ul>
+<li>Ethical approval is dated February 2020, but data were collected in 2022. Was there an amendment or extension?</li>
+<li>The memo number (&quot;CMC/PG/…&quot;) suggests a postgraduate thesis. If so, this must be disclosed and checked for duplicate publication.</li>
+<li>The age range is 13–50. Patients aged 13–17 need guardian consent plus assent, and PHQ-9 is not the adolescent instrument (PHQ-A).</li>
+<li>No author is affiliated with Chattogram, and the text relies on &quot;original study records&quot;. An ICMJE contributorship statement is needed, along with confirmation of who collected the data.</li>
+</ul>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> Ethics approval predates data collection by two years, the memo number points to a thesis, minors were enrolled, and no author is from the study site.<br><b>Verdict:</b> Legitimate. The authors must supply the documents.</p>
 <h3>From the data</h3>
 <ul><li>20% of patients were aged 13–17 (range 13–50). In adults only, the fatigue association is unchanged (ρ = 0.404).</li></ul>
 <h3>Still needed from the client</h3>
@@ -298,7 +382,12 @@ Corrected values come from <code>Data/SLE Case Master data.xlsm</code> via <code
 <!-- 11 -->
 <div class="card" id="p11">
 <div class="head"><span class="num">11</span><h2>Classification criteria: ACR-1997 in 2022</h2><span class="chip fixed">Fixed</span></div>
-<blockquote>Justify ACR-1997 when SLICC-2012 and EULAR/ACR-2019 were available.</blockquote>
+<div class="part-label">Reviewer comment (verbatim)</div>
+<blockquote class="verbatim">
+<p>11. Classification criteria. Using ACR 1997 in 2022 needs justification, since SLICC-2012 and EULAR/ACR-2019 were available. In the validation cohort, the new criteria had a sensitivity of 96.1% and specificity of 93.4%, compared with 82.8% sensitivity for ACR 1997.</p>
+</blockquote>
+<div class="part-label">Explanation and fixes</div>
+<p class="plain"><b>What the reviewer is saying:</b> The reviewer asks why the older ACR-1997 criteria were used when newer, more sensitive criteria were available.<br><b>Verdict:</b> Answerable. Every patient also meets SLICC-2012.</p>
 <div class="grid">
   <div class="stat"><b>100%</b><span>Meet SLICC-2012 (score 6–13, ≥4 required)</span></div>
   <div class="stat"><b>100%</b><span>Meet ACR-1997 (score 4–9)</span></div>
